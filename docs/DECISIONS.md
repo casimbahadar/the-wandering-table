@@ -1,0 +1,29 @@
+# DECISIONS.md — append-only, one line per decision, dated
+
+- 2026-07-27 — App concept (Casim): premium buy-once 5e-compatible tabletop-experience app; no microtransactions or subscriptions; all launch content included; optional paid DLC later.
+- 2026-07-27 — Identity (Casim): one app; the GM-narrated "table" framing is the whole product identity, not a mode.
+- 2026-07-27 — Modes (Casim): authored Campaign + Dice Dungeon roguelite at launch, sharing one rules engine.
+- 2026-07-27 — Ruleset (Casim, after Claude pushback on shipping three rulesets): launch SRD 5.2 only; Guided mode default with Expert toggle; SRD 5.1/homebrew phased later as DLC behind an engine interface.
+- 2026-07-27 — Licensing (verified vs SRD 5.2 PDF legal page): CC-BY-4.0; exact attribution statement embedded in-app; "compatible with fifth edition" phrasing only; no Wizards IP (no D&D name, beholders, mind flayers, settings).
+- 2026-07-27 — Naming (Casim's fork, open): game name TBD; "The Lantern Road" is slice content, not the product name.
+- 2026-07-27 — Engineering canon: single-file HTML slices, zero dependencies, raw Web Audio, mobile-first; CORE-marker logic block; harness tests the shipped file; guided brain doubles as the harness smart agent (ship = test); jsdom smoke for win+loss through the real DOM; Capacitor store path.
+- 2026-07-27 — Balance philosophy (recorded deviation): solo hero vs SRD-baseline goblins is Deadly-tier, so slices run a documented solo-tune (hero primary stat 16, +3 HP; goblin HP 7 vs SRD 10, damage 1d6+1 vs 1d6+2). Solo-forever vs party system is an open fork (Casim).
+- 2026-07-27 — Slice 2 (Casim playtest): persistent map through exploration and combat; positional combat (speed 6, LoS, trees as cover); Stabber+Archer composition; every player d20 hand-rolled; sheet button moved into in-flow header.
+- 2026-07-27 — Slice 3 (Casim playtest + rules question): opportunity attacks, Disengage action, goblin Nimble Escape, ranged-in-melee disadvantage, manual damage/healing/Magic Missile rolls; Dash and difficult terrain deferred to v1.
+- 2026-07-27 — Bug fixes proven by harness/smoke: replay-race null crash (s1), ambush-death soft-lock (s2), Dodge-never-expires (s2, fixed in s3 — s2 Monte-Carlo numbers were inflated).
+- 2026-07-27 — Encounter principle (playtest finding): a free-swing rule only creates decisions when eating the swing is tempting; mix threat profiles so target priority is a live choice.
+- 2026-07-27 — Playtest verdicts (Casim): two-tap attack (to-hit then damage) is payoff, not friction; three classes tested, "plays great."
+- 2026-07-27 — Product spine (Casim): whole campaigns and long playability are the priority; campaign architecture is first-class in the GDD; Dice Dungeon is the replayability engine.
+- 2026-07-27 — Work order (Casim): docs + repo foundation + SRD fidelity first, then campaign content and Dice Dungeon.
+- 2026-07-27 — Party model (Casim): solo start; party grows through recruitment during campaigns.
+- 2026-07-27 — Recruitment system (Casim): NPCs, enemy characters, and especially creatures become recruitable when conditions are met in battle (e.g., spare/intimidate/impress) or during the adventure; mechanics are an original system (no SRD sidekick rules exist) — spec to be designed collaboratively.
+- 2026-07-27 — Rules fidelity mandate (Casim): match D&D's rules and way as much as possible — standard 5e action economy, per-rest ability uses, spell slots, conditions, and short/long rest rules answer those design forks.
+- 2026-07-27 — Consequence of the mandate (Claude, pending Casim veto): revert to SRD-faithful statblocks and balance via encounter budgets (solo hero = small/minion encounters, scaling to full compositions as the party grows); drop the slice's monster solo-tune and hero +3 HP; slices 1–3 keep theirs as historical artifacts.
+- 2026-07-27 — Product content goal (Casim): many campaign options for the user; the name should fit an anthology of campaigns, not one story.
+- 2026-07-27 — Creator mode (Casim): procedural-only campaign creation — no LLM generation, no BYO-API-key (rejected as "what others already do"); templates must not feel generic: maximum customization and variance, granular editing at every level, and rich in-app resource libraries.
+- 2026-07-27 — Sharing (Casim): user campaigns shared globally (Musical Forge Studio pattern, Supabase); report/block moderation is a spec requirement (Apple UGC rules).
+- 2026-07-27 — Creator scope (Casim + Claude): v2 roadmap item, after launch ships authored campaigns + Dice Dungeon.
+- 2026-07-27 — Naming (in progress): "The Open Table" chosen conceptually but blocked as a mark — OpenTable holds mobile-app-class trademarks and the phrase is generic TTRPG vocabulary; concept survives as tagline ("an open table for every adventurer"); final name pending Casim's pick from collision-safe variants.
+- 2026-07-27 — NAME DECIDED (Casim): **The Wandering Table**. Tagline: "an open table for every adventurer." Store subtitle carries "5E-Compatible Tabletop RPG." Web-search screen clean; formal USPTO/CIPO search + domain sweep gated before store submission.
+- 2026-07-27 — Engineering canon relaxed (Casim): production is not bound to zero dependencies or prior-project stacks; dependencies admitted by justification (solve a real limit, recorded here, boring/few). Non-negotiables survive stack changes: pure logic layer (no DOM), ship = test (import real modules, never copies), verified builds with numbers. Raw Web Audio stays until a real need says otherwise. Slices 1–3 remain zero-dep artifacts.
+- 2026-07-27 — Production stack recommendation (Claude, to confirm at repo seed): Vite + TypeScript + Vitest (Casim's existing claim-companion stack), Supabase SDK for sharing, Capacitor for stores, React optional for creator-mode UI later.

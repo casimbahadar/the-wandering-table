@@ -1,0 +1,34 @@
+# CLAUDE.md — The Wandering Table
+
+## What this is
+Premium buy-once mobile game recreating tabletop-at-a-table 5e-compatible play: GM voice, hand-rolled dice, real SRD 5.2 rules, persistent tactical map. Two modes on one rules engine: authored Campaign (product spine) + Dice Dungeon roguelite. No microtransactions ever.
+
+## Current state (2026-07-27)
+Three verified playable slices done (slice-one/two/three.html); slice-three is current. Playtest-validated: manual d20 + damage rolls, persistent map, positional combat with OA/Disengage. Next milestones (see docs/GDD.md production plan): name + repo seed → SRD deep fidelity pass → campaign architecture spec → Campaign 1 Act 1.
+
+## Tech stack & architecture
+- Slices 1–3: single-file HTML, zero dependencies, raw Web Audio, mobile-first ~480px (historical artifacts — keep as-is).
+- Production canon (2026-07-27): dependencies by justification — admitted when they solve a real limit, recorded in docs/DECISIONS.md, boring and few. Recommended stack pending confirm at repo seed: Vite + TypeScript + Vitest, Supabase SDK (sharing), Capacitor (stores), React for creator-mode UI later. Raw Web Audio stays until a real need says otherwise.
+- Game logic lives ONLY between `/* CORE-START */` and `/* CORE-END */`: pure functions, no DOM/timers/audio. UI layer below it.
+- `slice-three.tests.mjs` — harness extracts CORE from the SHIPPED file (never a copy): unit checks, scene-graph walk, Monte-Carlo balance with assertions, anti-degenerate proofs (no stalemate, no kiting).
+- `slice-three.smoke.mjs` — jsdom drives the real DOM: creation → checks → combat win → replay → loss.
+- Store path: Capacitor wrap (web-to-app-store skill), not yet exercised.
+
+## Conventions (standing rules)
+- Casim authors all creative/mission decisions; at meaningful forks present 2–4 options with a marked recommendation. Claude owns build + verification.
+- Ship = test: the Guided-mode suggestion brain IS the harness "smart" agent. Never fork them.
+- "Verified" claims require executed numbers. Run harness + smoke before shipping any build; new mechanics need new unit tests.
+- Audit before changing existing code; minimal diffs; one concern per change.
+- Balance changes: re-run Monte-Carlo, report the spread, respect assertions (smart-with-edges 70–96%, ambush ≥5 pts, smart ≥ naive, spread ≤25 pts, degenerate strategies fail).
+- Playtest feedback (Casim + Sobia) is real data: diagnose symptom before accepting prescription; one experiment per cycle.
+- Licensing hard rules: SRD 5.2 attribution statement verbatim in-app; "compatible with fifth edition" only; never "D&D" or Wizards IP anywhere.
+- Solo-tune monster deviations from SRD are recorded in docs/GDD.md fidelity tables — never deviate silently.
+
+## Key design flags (do not re-litigate; see docs/DECISIONS.md)
+- Wizard is strongest class everywhere (Disengage + point-blank Magic Missile) — v1 tuning item.
+- Encounter principle: free-swing rules only bind when eating the swing is tempting; mix threat profiles.
+- Deferred rules: Dash, Hide, difficult terrain, cover AC, full class kits.
+- Open forks (Casim only): setting/tone, solo vs party, rest/progression model, campaign length, Dice Dungeon theme, pricing, art direction.
+
+## Session hygiene
+Read this file + docs/DECISIONS.md tail + docs/TODO.md at session start; restate state in 2–3 lines. At session end: update TODO.md, append DECISIONS.md, give a done/in-progress/next/landmine handoff.
