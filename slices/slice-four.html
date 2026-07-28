@@ -118,6 +118,9 @@ h1,h2{font-family:var(--serif);font-weight:600}
 
 /* Scene / log */
 #log,#clog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:11px;padding:8px 2px;min-height:96px}
+/* Scene screen scrolls as one column: DM text grows freely, choices sit below the fold */
+#sc-scene{overflow-y:auto}
+#log{flex:0 0 auto;overflow:visible;min-height:0}
 .dmline{opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
 .dmline.in{opacity:1;transform:none}
 .youline{align-self:flex-end;background:var(--panel2);border:1px solid var(--line);border-radius:12px 12px 2px 12px;
@@ -279,9 +282,9 @@ const CLASSES={
     action2:{id:"aimed_strike",name:"Aimed Strike",desc:"Attack with advantage; +1d6 damage on a hit.",uses:2},
     bonus:null,skills:["stealth","sleight","perception"]},
   wizard:{id:"wizard",name:"Wizard",blurb:"Thin on armor, thick on options. Fire from fingertips.",
-    hitDie:6,stats:{str:8,dex:14,con:13,int:16,wis:12,cha:10},ac:15,acWhy:"Mage Armor (cast at dawn)",
+    hitDie:6,stats:{str:8,dex:14,con:13,int:16,wis:12,cha:10},ac:15,acWhy:"Mage Armor (cast at dawn — one slot spent)",
     weapon:{name:"Fire Bolt",die:10,ability:"int",range:99,noDmgMod:true},
-    action2:{id:"magic_missile",name:"Magic Missile",desc:"Three darts that never miss: 3 \u00d7 (1d4+1).",uses:2},
+    action2:{id:"magic_missile",name:"Magic Missile",desc:"Three darts that never miss: 3 \u00d7 (1d4+1). Your last level-1 slot.",uses:1},
     bonus:null,skills:["arcana","investigation"]},
   cleric:{id:"cleric",name:"Cleric",blurb:"A mace in one hand, mercy in the other.",
     hitDie:8,stats:{str:16,dex:10,con:13,int:8,wis:15,cha:12},ac:15,acWhy:"Chain shirt + shield",
@@ -758,7 +761,7 @@ function suggestAction(s){
     }else{sug.action="attack";sug.target=ti;sug.why="Close the gap and swing before it can slip away."}
   }else{
     sug.action="defend";sug.target=ti;
-    sug.why="You can't reach them this turn. Advance behind your guard \u2014 let their arrows find nothing.";
+    sug.why="You can't reach them this turn. Advance behind your guard \u2014 let their shots find nothing.";
   }
   return sug;
 }
@@ -912,6 +915,9 @@ $("btn-sheet").addEventListener("click",function(){
 });
 
 /* ---- scene ---- */
+// The scene column scrolls as a whole; nudge the newest line into view without
+// slamming to the bottom, so earlier text stays readable.
+function logNudge(p){if(p.scrollIntoView)p.scrollIntoView({block:"nearest"})}
 function dmSay(box,lines,then){
   let i=0;
   (function next(){
@@ -919,17 +925,17 @@ function dmSay(box,lines,then){
     const p=document.createElement("p");p.className="dmvoice dmline";p.innerHTML=lines[i];
     box.appendChild(p);
     requestAnimationFrame(function(){requestAnimationFrame(function(){p.classList.add("in")})});
-    box.scrollTop=box.scrollHeight;
+    logNudge(p);
     i++;setTimeout(next,i===1?150:620);
   })();
 }
 function youSay(t){
   const p=document.createElement("p");p.className="youline";p.textContent=t;
-  $("log").appendChild(p);$("log").scrollTop=$("log").scrollHeight;
+  $("log").appendChild(p);logNudge(p);
 }
 function sysSay(box,html){
   const p=document.createElement("p");p.className="sysline";p.innerHTML=html;
-  box.appendChild(p);box.scrollTop=box.scrollHeight;
+  box.appendChild(p);logNudge(p);
 }
 function startScene(){
   show("sc-scene");$("log").innerHTML="";buildGrid();
@@ -1311,9 +1317,9 @@ function playEvents(ev,done){
     else if(e.t==="defend"){clogLine("You advance behind your guard \u2014 their attacks at disadvantage.")}
     else if(e.t==="foemove"){sndStep()}
     else if(e.t==="foehit"){G.stats.rolls++;G.stats.dmgTaken+=e.dmg;flashToken("tk-hero");sndHit();
-      clogLine((e.oa?"<b class='result-bad'>Opportunity attack!</b> You turned your back \u2014 the ":"The ")+e.foe+(e.ranged?" looses an arrow":" cuts at you")+": "+foeMath(e.atk)+" \u2014 <b class='result-bad'>"+e.dmg+" damage</b> ("+e.heroHp+"/"+G.ch.maxHp+")")}
+      clogLine((e.oa?"<b class='result-bad'>Opportunity attack!</b> You turned your back \u2014 the ":"The ")+e.foe+(e.ranged?(G.combat.foes[e.i].kind==="archer"?" looses an arrow":" flings a dagger"):" cuts at you")+": "+foeMath(e.atk)+" \u2014 <b class='result-bad'>"+e.dmg+" damage</b> ("+e.heroHp+"/"+G.ch.maxHp+")")}
     else if(e.t==="foemiss"){G.stats.rolls++;
-      clogLine((e.oa?"<b style='color:var(--gold)'>Opportunity attack</b> as you break away \u2014 the ":"The ")+e.foe+(e.ranged?"'s arrow hisses past":" lunges")+": "+foeMath(e.atk)+" \u2014 <b class='result-ok'>it misses.</b>")}
+      clogLine((e.oa?"<b style='color:var(--gold)'>Opportunity attack</b> as you break away \u2014 the ":"The ")+e.foe+(e.ranged?(G.combat.foes[e.i].kind==="archer"?"'s arrow hisses past":"'s dagger whips past"):" lunges")+": "+foeMath(e.atk)+" \u2014 <b class='result-ok'>it misses.</b>")}
     else if(e.t==="down"){clogLine("<b class='result-bad'>The world tilts. You go down.</b>")}
     else if(e.t==="victory"){clogLine("<b class='result-ok'>The waystation goes quiet.</b>")}
     else if(e.t==="exhaust"){clogLine("<b class='result-bad'>You can't keep this up \u2014 they wear you down.</b>")}

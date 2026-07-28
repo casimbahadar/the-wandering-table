@@ -165,6 +165,9 @@ for(const cls of Object.keys(C.CLASSES))for(const sp of Object.keys(C.SPECIES)){
   const e3=C.useBonus(sp2,"potion");
   ok(e3[0].amt>=4&&e3[0].amt<=10,"potion heals 2d4+2");
   ok(C.useBonus(sp2,"second_wind")===null,"potion consumes the turn's Bonus Action");
+  // wizard slot accounting: Mage Armor consumes one of the two level-1 slots -> one Magic Missile
+  ok(C.buildCharacter("wizard","human","T").action2Uses===1,
+    "wizard has 1 Magic Missile cast (Mage Armor spent the other slot; SRD: 2 slots at level 1)");
   // Keen Senses: proficiency (not advantage) in Perception, or Survival if already proficient
   ok(C.buildCharacter("fighter","elf","T").skills.includes("perception"),"elf fighter gains Perception proficiency");
   ok(C.buildCharacter("rogue","elf","T").skills.includes("survival"),"elf rogue (already Perception-proficient) gains Survival");

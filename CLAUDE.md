@@ -25,7 +25,7 @@ Repo seeded; slice-four is current — the SRD 5.2 deep-fidelity artifact (verif
 - Solo-tune monster deviations from SRD are recorded in docs/GDD.md fidelity tables — never deviate silently.
 
 ## Key design flags (do not re-litigate; see docs/DECISIONS.md)
-- Wizard is strongest class everywhere (Disengage + point-blank Magic Missile) — v1 tuning item; the tuning pass also owns the flagged slot accounting (2 MM + free Mage Armor = 3 level-1 slots vs SRD's 2). Cleric is the band floor (72.6%) post-fidelity.
+- Wizard-strongest flag RESOLVED 2026-07-28: Mage Armor costs a slot → 1 Magic Missile cast; wizard now third of four (84.8% edges). Watch items: cleric (72.3%) and wizard-even (72.5%) sit near the band floor.
 - Encounter principle: free-swing rules only bind when eating the swing is tempting; mix threat profiles.
 - Deferred rules: Dash, Hide, difficult terrain, cover AC, full class kits.
 - Open forks (Casim only): setting/tone, solo vs party, rest/progression model, campaign length, Dice Dungeon theme, pricing, art direction.
