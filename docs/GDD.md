@@ -41,43 +41,58 @@ Free "D&D app" space = companion tools (character sheets, bestiaries, dice rolle
 
 ## Rules engine — scope & fidelity
 
-| Rule | Status | SRD 5.2 fidelity |
+*Deep fidelity pass completed 2026-07-28 against the SRD 5.2 PDF (in-repo, sole source of truth). Slice four is the fidelity-pass artifact; slices 1–3 keep their pre-fidelity numbers as history.*
+
+| Rule | Status | SRD 5.2 fidelity (verified 2026-07-28) |
 |---|---|---|
-| d20 checks, DC, adv/dis (incl. cancellation) | in | faithful |
-| Crits (double damage dice), nat-1 auto-miss | in | faithful |
-| Move (speed 6 tiles = 30 ft, 8-dir) + action + bonus action | in | faithful shape |
-| Opportunity attacks (leave reach → free swing) | in | simplified: start-adjacent & end-not-adjacent, not per-step path |
-| Disengage (action; slice grants a fresh move after) | in | simplification — 5e splits movement instead |
+| d20 checks, DC, adv/dis (incl. cancellation) | in | faithful (both→neither verified verbatim; no stacking) |
+| Nat 20 / nat 1 | in | faithful — auto-hit/miss on attack rolls only; SRD 5.2 does NOT apply it to ability checks |
+| Crits (roll all the attack's damage dice twice) | in | faithful — weapon dice, Aimed Strike d6, and goblin rider d4 all double |
+| Move (speed 6 tiles = 30 ft, 8-dir, diagonal = 1 square) + action + bonus action | in | faithful — matches SRD grid rules; corner rule added in s4 (diagonals can't cross wall/tree corners) |
+| Opportunity attacks (leave reach → free swing) | in | simplified: start-adjacent & end-not-adjacent, not per-step path; reaction budget untracked (flagged) |
+| Disengage (action; slice grants a fresh move after) | in | simplification — 5e splits movement; slice can exceed 30 ft in a Disengage turn (flagged) |
 | Dodge/Defend (attackers at dis until your next turn) | in | faithful (expiry unit-tested) |
 | Ranged attack with adjacent enemy → disadvantage | in | faithful |
-| Goblin Nimble Escape (bonus Disengage) | in | faithful; Hide half omitted |
-| Potion as bonus action | in | 2024 rule, high confidence — confirm vs SRD 5.2 equipment ch. before v1 |
+| Ranged attack beyond normal range → disadvantage | in (s4) | faithful — binds for thrown daggers (20/60 ft); shortbow's 80 ft never binds on this map |
+| Goblin Nimble Escape (bonus Disengage) | in | faithful; Hide half omitted (recorded) |
+| Potion of Healing as bonus action, 2d4+2 | in | **verified verbatim** vs SRD 5.2 equipment ch. ("As a Bonus Action, you can drink it…") |
+| Second Wind 1d10+1, two uses | in (s4 fix) | faithful — SRD grants two uses at level 1 (was 1) |
+| Healing Word: bonus action, 2d4+2, two level-1 slots | in (s4 fix) | faithful — 2d4 + Wis mod (+2); was 2d4+3 |
+| Magic Missile 3×(1d4+1), auto-hit, needs sight | in | faithful numbers; darts auto-target lowest-HP visible foe (guided simplification, flagged) |
+| Wizard slot accounting | in | **flagged:** 2 MM casts + "free" Mage Armor = 3 level-1 slots vs SRD's 2 — resolve in wizard tuning pass |
+| Fire Bolt 1d10, ranged spell attack, no mod | in | faithful (120 ft range never binds) |
+| Mage Armor 13+Dex, 8 h ("cast at dawn") | in | faithful (slot cost folded into wizard flag above) |
+| Skill→ability map (all 10 used) | in | faithful — verified against SRD skill table |
+| Class chassis (hit dice d10/d8/d6/d8; chain mail 16, studded 15, chain shirt+shield 15, mage armor 15; longsword d8, shortsword d6 finesse, mace d6) | in (s4 fix) | faithful — rogue armor relabeled studded leather ("leather AC 15" was impossible); hero HP = die max + Con (solo +3 removed) |
+| Rogue Aimed Strike (adv + 1d6, 2 uses) | in | recorded stand-in for Sneak Attack (1d6 matches; SRD version is at-will but conditional on adv/ally) |
+| Species traits | in (s4 fix) | Dwarf +1 HP/level (was +2 flat); Elf = Perception proficiency (was advantage); Halfling Luck rerolls one die of an adv/dis pair; Human = Heroic-Inspiration-shaped reroll (flag: RAW rerolls any die) |
+| Ability arrays (primary 16) | in | flagged: near-standard-array + "2024-style background bonus"; exact array+background arithmetic doesn't reproduce all six values — Casim's call at v1 |
 | Line of sight (Bresenham, trees/walls block) | in | reasonable approximation of cover; real cover AC bonuses deferred |
+| Initiative | replaced | openers set order/advantage by scene outcome (recorded design; goblin Initiative +2 unused) |
 | Dash, Hide, difficult terrain, opportunity-attack reactions per-round tracking | deferred | v1 items |
-| Class kits (1 signature action / bonus each) | in | deliberately simplified from full level-1 kits |
 
-**Monster fidelity — deliberate solo-tune deviations (recorded, not silent):**
+**Monster fidelity — SRD-faithful as of slice four (solo-tune retired):**
 
-| Stat | SRD 5.2 Goblin Warrior | Our Stabber/Archer |
+| Stat | SRD 5.2 Goblin Warrior = our Archer | SRD 5.2 Goblin Minion = our Stabber/Slinger |
 |---|---|---|
-| AC | 15 | 15 |
-| HP | 10 (3d6) | 7 |
+| AC | 15 | 12 |
+| HP | 10 (3d6) | 7 (2d6) |
 | Attack | +4 | +4 |
-| Damage | 1d6+2 (scimitar or shortbow) | 1d6+1 |
-| Traits | Nimble Escape (Disengage or Hide) | Nimble Escape (Disengage only) |
+| Damage | 1d6+2, +1d4 if the attack roll had Advantage | 1d4+2 (dagger; melee or thrown 20/60 ft) |
+| Traits | Nimble Escape (Disengage half; Hide omitted) | Nimble Escape (Disengage half; Hide omitted) |
 
-Rationale: SRD encounters assume a party of four; a solo level-1 hero vs two SRD-baseline goblins is Deadly-tier (v1 sims: 33–55% smart win rates). Solo tuning: primary stat 16 (2024-style background bonus), +3 HP "hardened by the road," goblin HP/damage reduced. **RESOLVED 2026-07-27 by rules-fidelity mandate (pending veto):** production uses SRD-faithful statblocks; balance comes from encounter budgets, not stat edits. Solo-tune above is slice-only history.
+Balance now comes from the SRD encounter budget, not stat edits: solo level-1 hero → Low difficulty = 50 XP → **two Goblin Minions** (stabber + dagger-slinger; mixed threat profiles preserved). Warrior + Minion (75 XP Moderate) sims at 42–68% smart-with-edges — correctly brutal for a slice climax; kept in the pocket for multi-fight arcs with rests. Two Warriors (100 XP High) remains Deadly-tier solo (~33–55% pre-fix; 22–53% at full SRD stats).
 
-## Balance findings (slice 3, 3000 runs/cell, harness-enforced)
+## Balance findings (slice 4, 3000 runs/cell, harness-enforced, 2026-07-28)
 
 | Class | smart, scene edges | smart, even | smart, ambushed | naive, even |
 |---|---|---|---|---|
-| Fighter | 84.0% | 79.7% | 73.7% | 67.4% |
-| Rogue | 85.7% | 81.2% | 77.0% | 47.7% |
-| Wizard | 93.6% | 91.7% | 88.0% | 24.0% |
-| Cleric | 75.8% | 72.6% | 68.5% | 48.2% |
+| Fighter | 90.8% | 85.4% | 82.2% | 74.6% |
+| Rogue | 91.1% | 86.2% | 81.5% | 47.1% |
+| Wizard | 92.9% | 88.1% | 82.0% | 27.4% |
+| Cleric | 72.6% | 71.2% | 63.3% | 48.4% |
 
-Harness assertions: smart-with-edges ≥70% and ≤96%; ambush costs ≥5 pts; smart ≥ naive; class spread ≤25 pts; defend-only and flee-only strategies provably fail (no stalemate, no kiting). **Flag:** wizard is the strongest class everywhere (Disengage + point-blank Magic Missile); tune in v1.
+Harness assertions: smart-with-edges ≥70% and ≤96%; ambush costs ≥5 pts (now a hard assertion; s4 margins 8.6–10.9); smart ≥ naive; class spread ≤25 pts (s4: 20.3); defend-only and flee-only strategies provably fail (no stalemate, no kiting). **Flags:** wizard still strongest (fix its slot accounting in the tuning pass — see fidelity table); cleric now the floor of the band (72.6%) — watch in playtest. Slice-3 numbers (pre-fidelity) retained in git history for comparison.
 
 ## Encounter design principles (from playtest)
 

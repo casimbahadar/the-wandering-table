@@ -3,8 +3,8 @@
 ## What this is
 Premium buy-once mobile game recreating tabletop-at-a-table 5e-compatible play: GM voice, hand-rolled dice, real SRD 5.2 rules, persistent tactical map. Two modes on one rules engine: authored Campaign (product spine) + Dice Dungeon roguelite. No microtransactions ever.
 
-## Current state (2026-07-27)
-Three verified playable slices done (slice-one/two/three.html); slice-three is current. Playtest-validated: manual d20 + damage rolls, persistent map, positional combat with OA/Disengage. Next milestones (see docs/GDD.md production plan): name + repo seed → SRD deep fidelity pass → campaign architecture spec → Campaign 1 Act 1.
+## Current state (2026-07-28)
+Repo seeded; slice-four is current — the SRD 5.2 deep-fidelity artifact (verified: harness 124/0 at 3000 runs/cell, smoke 22/0). SRD-faithful statblocks + rules; encounter = two Goblin Minions (50 XP Low budget); hero solo-tune removed. Slices 1–3 frozen as pre-fidelity playtest artifacts. The SRD 5.2 PDF is committed at repo root — it is the sole rules source of truth; never cite memory or wikis. Casim playtest of slice-four pending. Next milestones (see docs/GDD.md production plan): campaign architecture spec → recruitment spec → Campaign 1 Act 1.
 
 ## Tech stack & architecture
 - Slices 1–3: single-file HTML, zero dependencies, raw Web Audio, mobile-first ~480px (historical artifacts — keep as-is).
@@ -25,7 +25,7 @@ Three verified playable slices done (slice-one/two/three.html); slice-three is c
 - Solo-tune monster deviations from SRD are recorded in docs/GDD.md fidelity tables — never deviate silently.
 
 ## Key design flags (do not re-litigate; see docs/DECISIONS.md)
-- Wizard is strongest class everywhere (Disengage + point-blank Magic Missile) — v1 tuning item.
+- Wizard is strongest class everywhere (Disengage + point-blank Magic Missile) — v1 tuning item; the tuning pass also owns the flagged slot accounting (2 MM + free Mage Armor = 3 level-1 slots vs SRD's 2). Cleric is the band floor (72.6%) post-fidelity.
 - Encounter principle: free-swing rules only bind when eating the swing is tempting; mix threat profiles.
 - Deferred rules: Dash, Hide, difficult terrain, cover AC, full class kits.
 - Open forks (Casim only): setting/tone, solo vs party, rest/progression model, campaign length, Dice Dungeon theme, pricing, art direction.
