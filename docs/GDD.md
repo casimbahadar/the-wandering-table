@@ -59,7 +59,7 @@ Free "D&D app" space = companion tools (character sheets, bestiaries, dice rolle
 | Second Wind 1d10+1, two uses | in (s4 fix) | faithful — SRD grants two uses at level 1 (was 1) |
 | Healing Word: bonus action, 2d4+2, two level-1 slots | in (s4 fix) | faithful — 2d4 + Wis mod (+2); was 2d4+3 |
 | Magic Missile 3×(1d4+1), auto-hit, needs sight | in | faithful numbers; darts auto-target lowest-HP visible foe (guided simplification, flagged) |
-| Wizard slot accounting | in | **flagged:** 2 MM casts + "free" Mage Armor = 3 level-1 slots vs SRD's 2 — resolve in wizard tuning pass |
+| Wizard slot accounting | in (s4 fix) | faithful — Mage Armor consumes one of the two level-1 slots; 1 Magic Missile cast at AC 15 (Casim's 2026-07-28 resolution, implemented + re-simmed same day) |
 | Fire Bolt 1d10, ranged spell attack, no mod | in | faithful (120 ft range never binds) |
 | Mage Armor 13+Dex, 8 h ("cast at dawn") | in | faithful (slot cost folded into wizard flag above) |
 | Skill→ability map (all 10 used) | in | faithful — verified against SRD skill table |
@@ -83,16 +83,16 @@ Free "D&D app" space = companion tools (character sheets, bestiaries, dice rolle
 
 Balance now comes from the SRD encounter budget, not stat edits: solo level-1 hero → Low difficulty = 50 XP → **two Goblin Minions** (stabber + dagger-slinger; mixed threat profiles preserved). Warrior + Minion (75 XP Moderate) sims at 42–68% smart-with-edges — correctly brutal for a slice climax; kept in the pocket for multi-fight arcs with rests. Two Warriors (100 XP High) remains Deadly-tier solo (~33–55% pre-fix; 22–53% at full SRD stats).
 
-## Balance findings (slice 4, 3000 runs/cell, harness-enforced, 2026-07-28)
+## Balance findings (slice 4 + wizard slot fix, 3000 runs/cell, harness-enforced, 2026-07-28)
 
 | Class | smart, scene edges | smart, even | smart, ambushed | naive, even |
 |---|---|---|---|---|
 | Fighter | 90.8% | 85.4% | 82.2% | 74.6% |
 | Rogue | 91.1% | 86.2% | 81.5% | 47.1% |
-| Wizard | 92.9% | 88.1% | 82.0% | 27.4% |
-| Cleric | 72.6% | 71.2% | 63.3% | 48.4% |
+| Wizard | 84.8% | 72.5% | 65.2% | 27.8% |
+| Cleric | 72.3% | 71.2% | 62.6% | 47.9% |
 
-Harness assertions: smart-with-edges ≥70% and ≤96%; ambush costs ≥5 pts (now a hard assertion; s4 margins 8.6–10.9); smart ≥ naive; class spread ≤25 pts (s4: 20.3); defend-only and flee-only strategies provably fail (no stalemate, no kiting). **Flags:** wizard still strongest (fix its slot accounting in the tuning pass — see fidelity table); cleric now the floor of the band (72.6%) — watch in playtest. Slice-3 numbers (pre-fidelity) retained in git history for comparison.
+Harness assertions: smart-with-edges ≥70% and ≤96%; ambush costs ≥5 pts (hard assertion); smart ≥ naive; class spread ≤25 pts (18.8); defend-only and flee-only strategies provably fail (no stalemate, no kiting). **Wizard-strongest flag RESOLVED 2026-07-28:** Mage Armor now costs a slot (1 Magic Missile cast) — wizard drops from strongest everywhere (92.9 edge) into the pack (84.8, third of four). Remaining watch items: cleric (72.3) and wizard-even (72.5) sit near the band floor — confirm feel in playtest. Slice-3 numbers (pre-fidelity) retained in git history for comparison.
 
 ## Encounter design principles (from playtest)
 
