@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>The Wandering Table — Slice Three: The Lantern Road</title>
+<style>
+:root{
+  --ink:#12141d; --panel:#1b1e2b; --panel2:#22263a; --line:#2c3046;
+  --parch:#ece1c8; --parch-ink:#2b2417; --parch-line:#c9b98f;
+  --gold:#e0a93e; --gold-dim:#9c7526;
+  --ok:#8fbf7f; --bad:#d95d55; --arch:#b06ac9; --dm:#ddd5c2; --mut:#8b8fa3;
+  --tile:#191c2a; --tile2:#1e2233; --road:#232637; --tree:#24352c; --wall:#343a52;
+  --serif:"Iowan Old Style","Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--ink);color:var(--dm);font-family:var(--sans);overflow:hidden;
+  background-image:radial-gradient(ellipse 120% 55% at 50% -8%, rgba(224,169,62,.10), transparent 60%)}
+#app{max-width:480px;margin:0 auto;height:100%;height:100dvh;display:flex;flex-direction:column;position:relative}
+.screen{display:none;flex-direction:column;flex:1;min-height:0;padding:10px 14px max(12px,env(safe-area-inset-bottom))}
+.screen.on{display:flex}
+button{font-family:var(--sans);border:1px solid var(--line);background:var(--panel);color:var(--dm);
+  border-radius:12px;padding:12px 13px;font-size:15px;min-height:46px;cursor:pointer;text-align:left}
+button:active{transform:translateY(1px)}
+button.primary{background:var(--gold);border-color:var(--gold);color:#231a08;font-weight:700;text-align:center}
+button.ghost{background:transparent;color:var(--mut);text-align:center;border-color:var(--line)}
+button:disabled{opacity:.4}
+.eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:600}
+h1,h2{font-family:var(--serif);font-weight:600}
+.dmvoice{font-family:var(--serif);font-size:16.5px;line-height:1.5;color:var(--dm)}
+.dmvoice em{color:var(--gold);font-style:italic}
+.small{font-size:12px;color:var(--mut);line-height:1.5}
+
+/* in-flow header — fixes the sheet-button overlap */
+#hdr{display:none;align-items:center;justify-content:space-between;
+  padding:max(8px,env(safe-area-inset-top)) 14px 8px;border-bottom:1px solid var(--line)}
+#hdr.on{display:flex}
+#hdr .loc{font-family:var(--serif);font-size:15px;color:var(--parch)}
+#hdr button{min-height:34px;padding:5px 14px;font-size:12px;border-radius:17px;color:var(--mut);text-align:center}
+#minisheet{display:none;position:absolute;top:52px;right:12px;left:12px;z-index:29;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+#minisheet.on{display:block}
+
+/* Cover */
+#sc-cover{justify-content:center;text-align:center;gap:18px;padding-top:max(14px,env(safe-area-inset-top))}
+#sc-cover .die-mark{font-family:var(--serif);font-size:60px;color:var(--gold);line-height:1}
+#sc-cover h1{font-size:33px}
+#sc-cover .sub{font-family:var(--serif);font-style:italic;color:var(--mut);font-size:15px}
+#sc-cover button{align-self:center;min-width:230px}
+
+/* Creation */
+.topbar{display:flex;align-items:baseline;justify-content:space-between;padding:max(8px,env(safe-area-inset-top)) 0 10px}
+.cards{display:flex;flex-direction:column;gap:9px;overflow-y:auto;padding-bottom:8px}
+.card{display:flex;flex-direction:column;gap:3px}
+.card .t{font-family:var(--serif);font-size:17px;color:var(--parch)}
+.card .d{font-size:13px;color:var(--mut);line-height:1.45}
+.namebox{display:flex;gap:8px;margin:10px 0}
+.namebox input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;color:var(--dm);
+  font-size:16px;padding:12px;min-height:46px}
+.namebox button{min-width:52px;text-align:center}
+.foot{margin-top:auto;padding-top:10px;display:flex;flex-direction:column;gap:8px}
+
+/* Sheet */
+.sheet{background:var(--parch);color:var(--parch-ink);border-radius:10px;padding:13px 15px;
+  font-family:var(--serif);box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.sheet .nm{font-size:21px;font-weight:700}
+.sheet .cl{font-style:italic;font-size:14px;margin-bottom:8px;color:#5a4c2f}
+.sheet .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;border-top:1px solid var(--parch-line);padding-top:8px}
+.sheet .stat{text-align:center}
+.sheet .stat b{display:block;font-size:16px}
+.sheet .stat span{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#7a6a45}
+.sheet .row{display:flex;justify-content:space-between;font-size:13.5px;border-top:1px solid var(--parch-line);
+  margin-top:8px;padding-top:8px}
+.sheet .trait{font-size:12.5px;font-style:italic;margin-top:6px;color:#5a4c2f}
+
+/* Map — persistent board */
+#map{position:relative;width:100%;max-width:352px;margin:0 auto;border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  background:var(--tile);flex-shrink:0}
+#grid{display:grid;grid-template-columns:repeat(9,1fr)}
+.tile{aspect-ratio:1;background:var(--tile);border:1px solid rgba(44,48,70,.55);position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:14px}
+.tile.alt{background:var(--tile2)}
+.tile.road{background:var(--road)}
+.tile.tree{background:var(--tree);color:#4d7a5c}
+.tile.tree::after{content:"\25B2";font-size:15px}
+.tile.wall{background:var(--wall)}
+.tile.door{background:var(--wall);color:var(--gold)}
+.tile.door::after{content:"\25AE";text-shadow:0 0 8px var(--gold)}
+.tile.satch::after{content:"\2726";color:var(--gold);font-size:12px;opacity:.9}
+.tile.hl{cursor:pointer}
+.tile.hl::before{content:"";position:absolute;inset:15%;border:2px solid var(--gold);border-radius:6px;opacity:.75}
+.tile.hl.oa::before{border-color:var(--bad);opacity:.85}
+.token{position:absolute;width:9%;aspect-ratio:1;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:13px;z-index:5;transition:left .45s ease,top .45s ease;
+  transform:translate(-50%,-50%);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.token.hero{background:var(--gold);color:#231a08}
+.token.stab{background:var(--bad);color:#fff}
+.token.arch{background:var(--arch);color:#fff}
+.token.hurt{animation:hurt .35s}
+@keyframes hurt{0%{filter:brightness(2.2)}100%{filter:none}}
+.token.gone{opacity:0;transform:translate(-50%,-50%) scale(.3)}
+
+/* Foe chips (targets) */
+#foechips{display:flex;gap:8px;padding:7px 0 2px}
+.fchip{flex:1;text-align:center;padding:7px 6px;border-radius:10px;min-height:0}
+.fchip .fn{font-family:var(--serif);font-size:13.5px;color:var(--parch)}
+.fchip .fhp{display:flex;gap:2px;justify-content:center;margin-top:4px}
+.fchip .pip{width:8px;height:8px;border-radius:2px;background:var(--bad)}
+.fchip.archer .pip{background:var(--arch)}
+.fchip .pip.off{background:var(--line)}
+.fchip.dead{opacity:.35}
+.fchip.dead .fn{text-decoration:line-through}
+.fchip.targetable{border-color:var(--gold);animation:pulse 1s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 3px rgba(224,169,62,.25)}}
+.fchip .rng{font-size:10px;color:var(--mut);margin-top:2px}
+
+/* Scene / log */
+#log,#clog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:11px;padding:8px 2px;min-height:96px}
+.dmline{opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
+.dmline.in{opacity:1;transform:none}
+.youline{align-self:flex-end;background:var(--panel2);border:1px solid var(--line);border-radius:12px 12px 2px 12px;
+  padding:7px 11px;font-size:13.5px;color:var(--parch);max-width:85%}
+.sysline{font-size:13px;color:var(--mut);font-style:italic}
+.result-ok{color:var(--ok)} .result-bad{color:var(--bad)}
+#choices{display:flex;flex-direction:column;gap:8px;padding-top:6px}
+#choices .chk{font-size:12px;color:var(--gold);display:block;margin-top:2px}
+#choices .rec{font-size:12px;color:var(--ok);display:block;margin-top:2px;font-style:italic}
+
+/* Roll overlay */
+#roll{position:absolute;inset:0;background:rgba(10,11,17,.92);display:none;flex-direction:column;
+  align-items:center;justify-content:center;gap:15px;z-index:40;padding:20px;text-align:center;backdrop-filter:blur(3px)}
+#roll.on{display:flex}
+.d20{width:112px;height:112px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--serif);font-size:42px;font-weight:700;color:#231a08;
+  background:var(--gold);clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  box-shadow:0 0 60px rgba(224,169,62,.25)}
+.d20.tumble{animation:tum .09s linear infinite}
+@keyframes tum{0%{transform:rotate(-4deg) scale(1.02)}50%{transform:rotate(4deg) scale(.98)}100%{transform:rotate(-4deg) scale(1.02)}}
+.d20.crit{background:#fff2c9}
+.d20.fumb{background:var(--bad);color:#fff}
+#roll .why{font-family:var(--serif);font-style:italic;font-size:15.5px;color:var(--dm);max-width:300px}
+#roll .math{font-size:15px;color:var(--parch);min-height:44px;line-height:1.5}
+#roll .math b.ok{color:var(--ok)} #roll .math b.bad{color:var(--bad)}
+#roll .aux{font-size:13px;color:var(--mut)}
+#roll button{min-width:210px;text-align:center}
+
+/* Combat chrome */
+#suggest{font-size:12.5px;color:var(--ok);font-style:italic;font-family:var(--serif);padding:3px 2px;min-height:20px;flex-shrink:0;line-height:1.4}
+#herobar{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+#herobar .hn{font-family:var(--serif);color:var(--parch);font-size:14px}
+#hpwrap{flex:1;max-width:160px}
+#hpbar{height:7px;background:var(--line);border-radius:4px;overflow:hidden}
+#hpfill{height:100%;background:var(--ok);width:100%;transition:width .4s}
+#hpfill.low{background:var(--bad)}
+.hpnum{font-size:11px;color:var(--mut);margin-top:3px}
+#acbadge{font-size:12px;color:var(--mut)}
+#bonusrow{display:flex;gap:8px;padding-top:6px}
+#bonusrow button{flex:1;text-align:center;font-size:12.5px;min-height:38px;padding:7px}
+#actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:6px}
+#actions button{text-align:center;font-size:13.5px;padding:9px 6px}
+#actions button .u{display:block;font-size:10.5px;color:var(--mut);font-weight:400}
+#actions button.recd{border-color:var(--gold)}
+
+/* Recap */
+#sc-recap{gap:14px;overflow-y:auto;padding-top:max(14px,env(safe-area-inset-top))}
+#recap-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#recap-stats .rs{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
+#recap-stats .rs b{display:block;font-family:var(--serif);font-size:20px;color:var(--gold)}
+#recap-stats .rs span{font-size:11px;color:var(--mut)}
+.attrib{font-size:10.5px;color:#5c6075;line-height:1.5;border-top:1px solid var(--line);padding-top:10px;margin-top:auto}
+@media (prefers-reduced-motion:reduce){.d20.tumble{animation:none}.dmline{transition:none}.token{transition:none}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="hdr"><span class="loc">The Lantern Road</span><button id="btn-sheet">Sheet</button></div>
+  <div id="minisheet"></div>
+
+  <section id="sc-cover" class="screen on">
+    <div class="die-mark">&#9670;</div>
+    <div>
+      <div class="eyebrow">The Wandering Table &middot; Slice Three</div>
+      <h1>The Lantern Road</h1>
+      <div class="sub">An open table for every adventurer.<br>One traveler. One bad stretch of road. The GM is waiting.</div>
+    </div>
+    <button class="primary" id="btn-sit">Sit down at the table</button>
+    <div class="small">A playable slice &mdash; name, art, and audio are placeholders.<br>Compatible with fifth edition.</div>
+  </section>
+
+  <section id="sc-class" class="screen">
+    <div class="topbar"><span class="eyebrow">Make your hero &middot; 1 of 3</span></div>
+    <p class="dmvoice" style="padding-bottom:10px">&ldquo;Every table starts the same way,&rdquo; the GM says, fanning four sheets. &ldquo;<em>Who are you?</em>&rdquo;</p>
+    <div class="cards" id="class-cards"></div>
+  </section>
+
+  <section id="sc-species" class="screen">
+    <div class="topbar"><span class="eyebrow">Make your hero &middot; 2 of 3</span></div>
+    <p class="dmvoice" style="padding-bottom:10px">&ldquo;And what blood runs in you?&rdquo;</p>
+    <div class="cards" id="species-cards"></div>
+  </section>
+
+  <section id="sc-name" class="screen">
+    <div class="topbar"><span class="eyebrow">Make your hero &middot; 3 of 3</span></div>
+    <p class="dmvoice">&ldquo;Last thing. What do they call you?&rdquo;</p>
+    <div class="namebox">
+      <input id="name-input" type="text" maxlength="20" placeholder="Your name" autocomplete="off">
+      <button id="btn-randname" title="Roll a name">&#127922;</button>
+    </div>
+    <div id="sheet-slot"></div>
+    <div class="foot">
+      <button class="primary" id="btn-begin">The GM slides you your sheet</button>
+    </div>
+  </section>
+
+  <section id="sc-scene" class="screen">
+    <div id="map-slot-scene"></div>
+    <div id="log"></div>
+    <div id="choices"></div>
+  </section>
+
+  <section id="sc-combat" class="screen" style="overflow-y:auto">
+    <div id="map-slot-combat"></div>
+    <div id="foechips"></div>
+    <div id="clog"></div>
+    <div id="suggest"></div>
+    <div id="herobar">
+      <span class="hn" id="hb-name"></span>
+      <div id="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div class="hpnum" id="hb-hp"></div></div>
+      <span id="acbadge"></span>
+    </div>
+    <div id="bonusrow"></div>
+    <div id="actions"></div>
+  </section>
+
+  <section id="sc-recap" class="screen">
+    <div class="topbar" style="padding-top:0"><span class="eyebrow" id="recap-eyebrow">Session end</span></div>
+    <h2 id="recap-title" style="font-size:25px;color:var(--parch)"></h2>
+    <p class="dmvoice" id="recap-text"></p>
+    <div id="recap-stats"></div>
+    <div class="foot"><button class="primary" id="btn-again">Play again</button></div>
+    <div class="attrib">This work includes material from the System Reference Document 5.2 (&ldquo;SRD 5.2&rdquo;) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.</div>
+  </section>
+
+  <div id="map"><div id="grid"></div></div>
+
+  <div id="roll">
+    <div class="why" id="roll-why"></div>
+    <div class="d20" id="die">?</div>
+    <div class="aux" id="roll-aux"></div>
+    <div class="math" id="roll-math"></div>
+    <button class="primary" id="roll-btn">Roll the d20</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   CORE — pure game logic. No DOM, no audio, no timers.
+   The test harness extracts and runs exactly this block.
+   ========================================================================= */
+/* CORE-START */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const RNG={fn:Math.random,seed(n){this.fn=mulberry32(n)},random(){return this.fn()}};
+function d(n){return 1+Math.floor(RNG.random()*n)}
+function mod(s){return Math.floor((s-10)/2)}
+
+const CLASSES={
+  fighter:{id:"fighter",name:"Fighter",blurb:"Heavy armor, a long blade, and the stubbornness to stay standing.",
+    hitDie:10,stats:{str:16,dex:13,con:14,int:8,wis:12,cha:10},ac:16,acWhy:"Chain mail",
+    weapon:{name:"Longsword",die:8,ability:"str",range:1},
+    action2:null,bonus:{id:"second_wind",name:"Second Wind",desc:"Bonus: recover 1d10+1 HP.",uses:1},
+    skills:["athletics","intimidation"]},
+  rogue:{id:"rogue",name:"Rogue",blurb:"Quick hands, quiet feet, and a knife that finds the gap.",
+    hitDie:8,stats:{str:10,dex:16,con:13,int:12,wis:14,cha:8},ac:15,acWhy:"Leather armor",
+    weapon:{name:"Shortsword",die:6,ability:"dex",range:1},
+    action2:{id:"aimed_strike",name:"Aimed Strike",desc:"Attack with advantage; +1d6 damage on a hit.",uses:2},
+    bonus:null,skills:["stealth","sleight","perception"]},
+  wizard:{id:"wizard",name:"Wizard",blurb:"Thin on armor, thick on options. Fire from fingertips.",
+    hitDie:6,stats:{str:8,dex:14,con:13,int:16,wis:12,cha:10},ac:15,acWhy:"Mage Armor (cast at dawn)",
+    weapon:{name:"Fire Bolt",die:10,ability:"int",range:99,noDmgMod:true},
+    action2:{id:"magic_missile",name:"Magic Missile",desc:"Three darts that never miss: 3 \u00d7 (1d4+1).",uses:2},
+    bonus:null,skills:["arcana","investigation"]},
+  cleric:{id:"cleric",name:"Cleric",blurb:"A mace in one hand, mercy in the other.",
+    hitDie:8,stats:{str:16,dex:10,con:13,int:8,wis:15,cha:12},ac:15,acWhy:"Chain shirt + shield",
+    weapon:{name:"Mace",die:6,ability:"str",range:1},
+    action2:null,bonus:{id:"healing_word",name:"Healing Word",desc:"Bonus: heal 2d4+3. You still act this turn.",uses:2},
+    skills:["insight","perception","medicine"]}
+};
+const SPECIES={
+  human:{id:"human",name:"Human",blurb:"Resourceful to a fault.",trait:"Heroic Inspiration \u2014 reroll one failed roll, once."},
+  elf:{id:"elf",name:"Elf",blurb:"Nothing gets past those ears.",trait:"Keen Senses \u2014 advantage on Perception checks."},
+  dwarf:{id:"dwarf",name:"Dwarf",blurb:"Built like the mountain that raised them.",trait:"Stoneblood \u2014 +2 hit points."},
+  halfling:{id:"halfling",name:"Halfling",blurb:"Fortune's favorite child.",trait:"Lucky \u2014 reroll any natural 1."}
+};
+const SKILL_ABILITY={stealth:"dex",survival:"wis",intimidation:"cha",perception:"wis",sleight:"dex",
+  athletics:"str",arcana:"int",investigation:"int",insight:"wis",medicine:"wis"};
+
+function buildCharacter(clsId,spId,name){
+  const c=CLASSES[clsId],sp=SPECIES[spId];
+  const stats=Object.assign({},c.stats);
+  let maxHp=c.hitDie+mod(stats.con)+3;
+  if(spId==="dwarf")maxHp+=2;
+  return{name:name||"Nameless",clsId:clsId,spId:spId,className:c.name,speciesName:sp.name,
+    stats:stats,prof:2,ac:c.ac,acWhy:c.acWhy,hp:maxHp,maxHp:maxHp,speed:6,
+    weapon:c.weapon,
+    action2:c.action2?Object.assign({},c.action2):null,action2Uses:c.action2?c.action2.uses:0,
+    bonus:c.bonus?Object.assign({},c.bonus):null,bonusUses:c.bonus?c.bonus.uses:0,
+    skills:c.skills.slice(),trait:sp.trait,
+    inspiration:spId==="human",lucky:spId==="halfling",keenSenses:spId==="elf",
+    potion:false};
+}
+function checkBonus(ch,skill){
+  const ab=SKILL_ABILITY[skill];
+  return mod(ch.stats[ab])+(ch.skills.indexOf(skill)>=0?ch.prof:0);
+}
+function rollD20(ch,mode){
+  function one(){let r=d(20),rerolled=false;
+    if(ch&&ch.lucky&&r===1){r=d(20);rerolled=true}
+    return{r:r,lucky:rerolled}}
+  if(mode==="adv"||mode==="dis"){
+    const a=one(),b=one();
+    const keep=(mode==="adv")?(a.r>=b.r?a:b):(a.r<=b.r?a:b);
+    return{value:keep.r,rolls:[a.r,b.r],mode:mode,lucky:a.lucky||b.lucky};
+  }
+  const a=one();
+  return{value:a.r,rolls:[a.r],mode:"normal",lucky:a.lucky};
+}
+function skillCheck(ch,skill,dc){
+  let m="normal";
+  if(ch.keenSenses&&skill==="perception")m="adv";
+  const roll=rollD20(ch,m),bonus=checkBonus(ch,skill),total=roll.value+bonus;
+  return{roll:roll,bonus:bonus,total:total,dc:dc,skill:skill,success:total>=dc};
+}
+
+/* ---------- The board ---------- */
+const MAP={w:9,h:6,rows:[
+  "T.WWDWW.T",
+  ".........",
+  "..T...T..",
+  ".....T...",
+  ".T.......",
+  "........."
+]};
+function terrain(x,y){return MAP.rows[y].charAt(x)}
+function inBounds(x,y){return x>=0&&x<MAP.w&&y>=0&&y<MAP.h}
+function blockedAt(x,y){const t=terrain(x,y);return t==="T"||t==="W"||t==="D"}
+function key(x,y){return x+","+y}
+function cheb(a,b){return Math.max(Math.abs(a.x-b.x),Math.abs(a.y-b.y))}
+// line of sight between tile centers; intermediate blocked tiles break it
+function los(x0,y0,x1,y1){
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy,x=x0,y=y0;
+  while(!(x===x1&&y===y1)){
+    const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx}
+    if(e2<dx){err+=dx;y+=sy}
+    if(x===x1&&y===y1)break;
+    if(blockedAt(x,y))return false;
+  }
+  return true;
+}
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+function unitAt(s,x,y){
+  if(s.hero.hp>0&&s.pos.hero.x===x&&s.pos.hero.y===y)return"hero";
+  for(let i=0;i<s.foes.length;i++)if(s.foes[i].hp>0&&s.foes[i].x===x&&s.foes[i].y===y)return i;
+  return null;
+}
+// reachable tiles within steps, not entering blocked or occupied tiles
+function bfsReach(s,from,steps,selfId){
+  const dist=new Map();dist.set(key(from.x,from.y),0);
+  const q=[{x:from.x,y:from.y}];
+  while(q.length){
+    const c=q.shift(),cd=dist.get(key(c.x,c.y));
+    if(cd>=steps)continue;
+    for(const dr of DIRS){
+      const nx=c.x+dr[0],ny=c.y+dr[1],k=key(nx,ny);
+      if(!inBounds(nx,ny)||blockedAt(nx,ny)||dist.has(k))continue;
+      const u=unitAt(s,nx,ny);
+      if(u!==null&&u!==selfId)continue;
+      dist.set(k,cd+1);q.push({x:nx,y:ny});
+    }
+  }
+  return dist;
+}
+// distance field over walkable terrain from a target square (units ignored — for pathing intent)
+function bfsField(tx,ty){
+  const dist=new Map();dist.set(key(tx,ty),0);
+  const q=[{x:tx,y:ty}];
+  while(q.length){
+    const c=q.shift(),cd=dist.get(key(c.x,c.y));
+    for(const dr of DIRS){
+      const nx=c.x+dr[0],ny=c.y+dr[1],k=key(nx,ny);
+      if(!inBounds(nx,ny)||blockedAt(nx,ny)||dist.has(k))continue;
+      dist.set(k,cd+1);q.push({x:nx,y:ny});
+    }
+  }
+  return dist;
+}
+
+/* ---------- Scene graph ---------- */
+const SCENES={
+  start:"road",
+  nodes:{
+    road:{pos:[1,5],dm:["The lantern above the old waystation should be dark. It is not.",
+      "Through the pines you catch firelight, and voices that are not speaking any language of the road. Goblins \u2014 the toll-takers who emptied the last three wagons through here.",
+      "The GM taps the map between you. \u201cYou're here. The waystation is there. What do you do?\u201d"],
+      choices:[
+        {label:"Slip closer through the brush",skill:"stealth",dc:12,ok:"sneak_ok",fail:"sneak_fail"},
+        {label:"Read the tracks by the roadside",skill:"survival",dc:12,ok:"scout_ok",fail:"scout_fail"},
+        {label:"Stride up the road and announce yourself",skill:"intimidation",dc:14,ok:"bold_ok",fail:"bold_fail"}
+      ]},
+    sneak_ok:{pos:[3,2],set:{opener:"surprise",known:true},dm:["You move like a rumor, pine to pine, until you can smell their cookfire.",
+      "Two of them \u2014 a stabber and one with a short bow \u2014 arguing over a stolen boot. Neither has any idea you exist. The first swing will be yours, and it will land hard."],next:"satchel"},
+    sneak_fail:{pos:[2,3],set:{opener:"ambushed"},dm:["A branch cracks under your heel like a festival firework.",
+      "The voices stop. Then \u2014 low, delighted \u2014 they start <em>spreading out</em>. They know these trees better than you do."],next:"satchel"},
+    scout_ok:{pos:[2,5],set:{opener:"prepared",known:true},dm:["The mud tells the whole story: two sets of bare goblin feet \u2014 one light and quick, one dug-in at the heels the way an archer stands.",
+      "Two of them, and you know their habits before they know your face. You'll move first."],next:"satchel"},
+    scout_fail:{pos:[2,5],set:{opener:"normal"},dm:["Rain has churned the road into a gray soup. Tracks, yes \u2014 but how many, how fresh? The mud keeps its secrets.",
+      "You'll be walking in with your eyes open and nothing else."],next:"satchel"},
+    bold_ok:{pos:[3,5],set:{opener:"shaken"},dm:["You step onto the road and let your voice fill the whole valley: \u201cThe toll is CANCELLED.\u201d",
+      "Inside, something drops and shatters. When the goblins come out, their knuckles are white on their blades. Good. Frightened hands swing wide."],next:"satchel"},
+    bold_fail:{pos:[3,5],set:{opener:"ambushed"},dm:["You step out and declare the toll cancelled. A beat of silence.",
+      "Then laughter \u2014 wet, gleeful goblin laughter \u2014 and the crunch of feet circling through the trees to either side of you."],next:"satchel"},
+    satchel:{pos:[6,4],dm:["On your way in, your boot nudges something in the ditch: a courier's satchel, dropped in a hurry. Strangely heavy. The buckle glints \u2014 and so does something thin and metal beneath it.",
+      "\u201cCould be worth something,\u201d the GM says, neutral as a coin toss."],
+      choices:[
+        {label:"Search it carefully for traps",skill:"perception",dc:12,ok:"satchel_ok",fail:"satchel_fail"},
+        {label:"Leave it \u2014 eyes on the waystation",goto:"approach"}
+      ]},
+    satchel_ok:{pos:[6,4],set:{potion:true},dm:["There \u2014 a needle on a spring, set under the buckle. You ease it aside with two fingers and open the flap clean.",
+      "Inside: a glass vial of something red that glows faintly. A <em>healing potion</em>. Yours now."],next:"approach"},
+    satchel_fail:{pos:[6,4],dm:["You miss the needle entirely. It bites the meat of your thumb \u2014 a bright line of pain \u2014 and your flinch cracks the vial inside against a stone.",
+      "Whatever it held soaks uselessly into the ditch."],dmg:[1,4],next:"approach"},
+    approach:{dm:["The waystation door hangs off one hinge. Lantern light spills through the gap, and with it two crooked shadows.",
+      "The GM sets two red tokens on the map and reaches for the dice. \u201cHere we go.\u201d"],combat:true}
+  }
+};
+
+/* ---------- Combat ---------- */
+function makeFoe(kind,x,y){
+  if(kind==="archer")return{name:"Archer",kind:"archer",ac:15,maxHp:7,hp:7,atk:4,dmgDie:6,dmgMod:1,x:x,y:y};
+  return{name:"Stabber",kind:"stab",ac:15,maxHp:7,hp:7,atk:4,dmgDie:6,dmgMod:1,x:x,y:y};
+}
+const OPENERS={
+  surprise:{hero:[4,2],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:true,goblinsFirst:false,shaken:false},
+  prepared:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:false},
+  shaken:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:true},
+  normal:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:"coin",shaken:false},
+  ambushed:{hero:[2,5],foes:[["stab",2,4],["archer",5,2]],heroFirstAdv:false,goblinsFirst:true,shaken:false,ambushAdv:true}
+};
+function newCombat(ch,opener){
+  const o=OPENERS[opener]||OPENERS.normal;
+  const s={hero:ch,opener:opener,
+    foes:o.foes.map(function(f){return makeFoe(f[0],f[1],f[2])}),
+    pos:{hero:{x:o.hero[0],y:o.hero[1]}},
+    round:1,over:false,won:false,disengaged:false,
+    heroDefending:false,firstAttackAdv:!!o.heroFirstAdv,
+    foesShaken:!!o.shaken,
+    goblinsFirst:o.goblinsFirst==="coin"?(d(2)===1):!!o.goblinsFirst,ambushAdv:!!o.ambushAdv,
+    moved:false,acted:false,bonusUsed:false};
+  return s;
+}
+function livingFoes(s){return s.foes.filter(function(f){return f.hp>0})}
+function heroReach(s){return bfsReach(s,s.pos.hero,s.hero.speed,"hero")}
+// which living foes get an opportunity attack if the hero moves to (x,y)?
+// (simplified 5e: adjacent now, not adjacent at the destination, and you didn't Disengage)
+function moveProvokers(s,x,y){
+  if(s.disengaged)return[];
+  const h=s.pos.hero;
+  const out=[];
+  s.foes.forEach(function(f,i){
+    if(f.hp>0&&cheb(f,h)<=1&&Math.max(Math.abs(f.x-x),Math.abs(f.y-y))>1)out.push({f:f,i:i});
+  });
+  return out;
+}
+// returns an event list (possibly with opportunity attacks), or null if the move is illegal.
+// If an opportunity attack drops the hero, the move is stopped cold.
+function moveHero(s,x,y){
+  if(s.moved||s.over)return null;
+  if(s.acted&&!s.disengaged)return null;
+  const reach=heroReach(s);
+  if(!reach.has(key(x,y))||key(x,y)===key(s.pos.hero.x,s.pos.hero.y))return null;
+  const ev=[];
+  moveProvokers(s,x,y).forEach(function(o){
+    if(s.over)return;
+    foeAttack(s,o.f,o.i,ev,false,true);
+  });
+  if(s.over)return ev;
+  s.pos.hero={x:x,y:y};s.moved=true;ev.push({t:"heromove",x:x,y:y});
+  return ev;
+}
+// Disengage: your action; you leave no openings, and may still move this turn.
+// (Slice simplification: grants a fresh move allowance rather than splitting movement.)
+function heroDisengage(s){
+  if(s.acted||s.over)return null;
+  s.disengaged=true;s.acted=true;s.moved=false;
+  return[{t:"disengage"}];
+}
+function anyFoeAdjacent(s){const h=s.pos.hero;return s.foes.some(function(f){return f.hp>0&&cheb(f,h)<=1})}
+// which foes can the hero attack from current position, and how
+function attackOptions(s){
+  const h=s.pos.hero,w=s.hero.weapon;
+  return s.foes.map(function(f,i){
+    if(f.hp<=0)return{i:i,ok:false,why:"down"};
+    const dist=cheb(h,f);
+    if(w.range<=1)return{i:i,ok:dist<=1,why:dist<=1?"in reach":"out of reach",dist:dist};
+    const sight=los(h.x,h.y,f.x,f.y);
+    const why=!sight?"no line of sight":(anyFoeAdjacent(s)?"clear shot \u2014 disadvantage, blade in your face":"clear shot");
+    return{i:i,ok:sight,why:why,dist:dist};
+  });
+}
+function heroAttackMode(s,aimed){
+  const adv=aimed||s.firstAttackAdv;
+  const dis=s.hero.weapon.range>1&&anyFoeAdjacent(s); // an enemy in your face spoils ranged attacks
+  return(adv&&!dis)?"adv":((dis&&!adv)?"dis":"normal");
+}
+function attackResult(roll,bonus,targetAc){
+  const crit=roll.value===20,fumble=roll.value===1;
+  const hit=!fumble&&(crit||roll.value+bonus>=targetAc);
+  return{roll:roll,bonus:bonus,total:roll.value+bonus,ac:targetAc,hit:hit,crit:crit,fumble:fumble};
+}
+// the hero's damage roll — its own dice, doubled on a crit (Aimed Strike adds 1d6)
+function rollHeroDamage(ch,crit,extraDie){
+  const w=ch.weapon;const dice=[{die:w.die,val:d(w.die)}];
+  if(crit)dice.push({die:w.die,val:d(w.die)});
+  if(extraDie){dice.push({die:6,val:d(6)});if(crit)dice.push({die:6,val:d(6)})}
+  const m=w.noDmgMod?0:mod(ch.stats[w.ability]);
+  return{dice:dice,mod:m,total:Math.max(1,dice.reduce(function(a,x){return a+x.val},0)+m)};
+}
+// stage 1: resolve the to-hit roll (UI rolls the d20 by hand; harness rolls it in heroAttackAuto)
+function resolveHeroAttack(s,targetIdx,roll,aimed){
+  const ev=[];const ch=s.hero;const f=s.foes[targetIdx];
+  s.firstAttackAdv=false;
+  if(aimed)ch.action2Uses--;
+  const bonus=mod(ch.stats[ch.weapon.ability])+ch.prof;
+  const atk=attackResult(roll,bonus,f.ac);
+  s.acted=true;
+  if(atk.hit)ev.push({t:"heroattack",i:targetIdx,foe:f.name,aimed:aimed,atk:atk});
+  else ev.push({t:"heromiss",i:targetIdx,foe:f.name,aimed:aimed,atk:atk});
+  return ev;
+}
+// stage 2: apply a damage roll to the target
+function applyHeroDamage(s,targetIdx,dmgRoll,aimed,crit){
+  const ev=[];const f=s.foes[targetIdx];
+  f.hp=Math.max(0,f.hp-dmgRoll.total);
+  ev.push({t:"herohit",i:targetIdx,foe:f.name,aimed:aimed,dmg:dmgRoll.total,dice:dmgRoll.dice,mod:dmgRoll.mod,crit:crit,killed:f.hp<=0});
+  if(!livingFoes(s).length){s.over=true;s.won=true;ev.push({t:"victory"})}
+  return ev;
+}
+function heroAttackAuto(s,targetIdx,aimed){
+  const roll=rollD20(s.hero,heroAttackMode(s,aimed));
+  const ev=resolveHeroAttack(s,targetIdx,roll,aimed);
+  const a=ev[0];
+  if(a.t==="heroattack")return ev.concat(applyHeroDamage(s,targetIdx,rollHeroDamage(s.hero,a.atk.crit,aimed),aimed,a.atk.crit));
+  return ev;
+}
+function castMagicMissile(s){
+  const ev=[];const ch=s.hero;const h=s.pos.hero;
+  const visible=s.foes.some(function(f){return f.hp>0&&los(h.x,h.y,f.x,f.y)});
+  if(!visible)return null;
+  ch.action2Uses--;
+  for(let i=0;i<3;i++){
+    const foes=livingFoes(s).filter(function(f){return los(h.x,h.y,f.x,f.y)});
+    if(!foes.length)break;
+    foes.sort(function(a,b){return a.hp-b.hp});
+    const tgt=foes[0];const dmg=d(4)+1;
+    tgt.hp=Math.max(0,tgt.hp-dmg);
+    ev.push({t:"dart",i:s.foes.indexOf(tgt),foe:tgt.name,dmg:dmg,killed:tgt.hp<=0});
+  }
+  s.acted=true;
+  if(!livingFoes(s).length){s.over=true;s.won=true;ev.push({t:"victory"})}
+  return ev;
+}
+function useBonus(s,which){
+  const ch=s.hero,ev=[];
+  if(s.bonusUsed||s.over)return null;
+  if(which==="potion"){
+    if(!ch.potion)return null;
+    ch.potion=false;const h=d(4)+d(4)+2;ch.hp=Math.min(ch.maxHp,ch.hp+h);
+    ev.push({t:"heal",name:"Healing potion",amt:h,heroHp:ch.hp});
+  }else{
+    if(!ch.bonus||ch.bonus.id!==which||ch.bonusUses<=0)return null;
+    ch.bonusUses--;
+    if(which==="second_wind"){const h=d(10)+1;ch.hp=Math.min(ch.maxHp,ch.hp+h);
+      ev.push({t:"heal",name:"Second Wind",amt:h,heroHp:ch.hp})}
+    else if(which==="healing_word"){const h=d(4)+d(4)+3;ch.hp=Math.min(ch.maxHp,ch.hp+h);
+      ev.push({t:"heal",name:"Healing Word",amt:h,heroHp:ch.hp})}
+  }
+  s.bonusUsed=true;return ev;
+}
+function heroDefend(s){s.heroDefending=true;s.acted=true;return[{t:"defend"}]}
+function foeAttack(s,f,i,ev,ranged,oa){
+  let adv=false,dis=false;
+  if(s.heroDefending)dis=true;
+  if(s.foesShaken&&s.round===1)dis=true;
+  if(ranged&&cheb(f,s.pos.hero)<=1)dis=true; // bow in someone's face
+  if(s.ambushAdv&&s.round===1)adv=true;      // caught flat-footed
+  const mode=(adv&&!dis)?"adv":((dis&&!adv)?"dis":"normal");
+  const roll=rollD20(null,mode);
+  const atk=attackResult(roll,f.atk,s.hero.ac);
+  if(atk.hit){
+    const dmg=d(f.dmgDie)+(atk.crit?d(f.dmgDie):0)+f.dmgMod;
+    s.hero.hp=Math.max(0,s.hero.hp-dmg);
+    ev.push({t:"foehit",i:i,foe:f.name,ranged:ranged,oa:!!oa,atk:atk,dmg:dmg,heroHp:s.hero.hp});
+  }else ev.push({t:"foemiss",i:i,foe:f.name,ranged:ranged,oa:!!oa,atk:atk});
+  if(s.hero.hp<=0){s.over=true;s.won=false;ev.push({t:"down"})}
+}
+function foeMoveTo(s,f,i,ev,pick){
+  const reach=bfsReach(s,f,6,i);
+  let best=null,bestScore=Infinity;
+  reach.forEach(function(dist,k){
+    const p=k.split(",");const x=+p[0],y=+p[1];
+    const score=pick(x,y,dist);
+    if(score<bestScore){bestScore=score;best={x:x,y:y}}
+  });
+  if(best&&(best.x!==f.x||best.y!==f.y)){
+    f.x=best.x;f.y=best.y;ev.push({t:"foemove",i:i,x:best.x,y:best.y});
+  }
+}
+function goblinPhase(s){
+  const ev=[];
+  if(s.over)return ev;
+  const h=s.pos.hero;
+  const field=bfsField(h.x,h.y);
+  s.foes.forEach(function(f,i){
+    if(f.hp<=0||s.over)return;
+    if(f.kind==="stab"){
+      if(cheb(f,h)>1)foeMoveTo(s,f,i,ev,function(x,y){
+        const fd=field.get(key(x,y));return fd===undefined?999:fd});
+      if(cheb(f,h)<=1)foeAttack(s,f,i,ev,false);
+    }else{ // archer: keep distance >=2 with line of sight, then shoot
+      const near=cheb(f,h)<=1,sight=los(f.x,f.y,h.x,h.y);
+      if(near||!sight){
+        if(near)ev.push({t:"nimble",i:i,foe:f.name}); // Nimble Escape: bonus-action Disengage — no opening for you
+        foeMoveTo(s,f,i,ev,function(x,y){
+          const dd=Math.max(Math.abs(x-h.x),Math.abs(y-h.y));
+          const seen=los(x,y,h.x,h.y);
+          if(!seen)return 500-dd;            // last resort: hide far
+          if(dd<2)return 100-dd;             // adjacent w/ sight: bad
+          return -Math.min(dd,5);            // prefer sighted range
+        });
+      }
+      if(los(f.x,f.y,h.x,h.y))foeAttack(s,f,i,ev,true);
+    }
+  });
+  if(!s.over){s.round++;s.moved=false;s.acted=false;s.bonusUsed=false;s.disengaged=false;s.heroDefending=false}
+  return ev;
+}
+function endHeroTurn(s){
+  const ev=goblinPhase(s);
+  if(!s.over&&s.round>30){s.over=true;s.won=false;ev.push({t:"exhaust"})}
+  return ev;
+}
+/* Guided-mode brain — also the harness "smart" agent. Ship = test. */
+function suggestAction(s){
+  const ch=s.hero,h=s.pos.hero,foes=livingFoes(s),frac=ch.hp/ch.maxHp;
+  const sug={move:null,bonus:null,action:"defend",target:0,why:""};
+  if(!foes.length)return sug;
+  if(!s.bonusUsed){
+    if(ch.potion&&frac<=0.3)sug.bonus="potion";
+    else if(ch.bonus&&ch.bonusUses>0){
+      if(ch.bonus.id==="second_wind"&&frac<=0.45)sug.bonus="second_wind";
+      if(ch.bonus.id==="healing_word"&&frac<=0.5)sug.bonus="healing_word";
+    }
+  }
+  const reach=heroReach(s);
+  const ranged=ch.weapon.range>1;
+  const adjacent=foes.filter(function(f){return cheb(h,f)<=1});
+  if(ranged){
+    if(adjacent.length){
+      // blades in your face: darts don't care; otherwise slip away clean
+      if(ch.action2&&ch.action2Uses>0){
+        sug.action="ability";
+        sug.why="Point-blank darts \u2014 they never miss, and a blade in your face doesn't bother them.";
+        return sug;
+      }
+      sug.action="disengage";
+      let best=null,bestScore=-999;
+      reach.forEach(function(_,k){
+        const p=k.split(","),x=+p[0],y=+p[1];
+        const seen=foes.some(function(f){return los(x,y,f.x,f.y)});
+        if(!seen)return;
+        const minD=Math.min.apply(null,foes.map(function(f){return Math.max(Math.abs(x-f.x),Math.abs(y-f.y))}));
+        if(minD*10>bestScore){bestScore=minD*10;best={x:x,y:y}}
+      });
+      sug.move=best;
+      sug.why="Disengage \u2014 slip away without a parting blow, and make them cross the open again.";
+      return sug;
+    }
+    let best=null,bestScore=-999;
+    reach.forEach(function(_,k){
+      const p=k.split(","),x=+p[0],y=+p[1];
+      const seen=foes.filter(function(f){return los(x,y,f.x,f.y)});
+      if(!seen.length)return;
+      const minD=Math.min.apply(null,foes.map(function(f){return Math.max(Math.abs(x-f.x),Math.abs(y-f.y))}));
+      const score=Math.min(minD,4)*10+(x===h.x&&y===h.y?1:0);
+      if(score>bestScore){bestScore=score;best={x:x,y:y}}
+    });
+    if(best&&!(best.x===h.x&&best.y===h.y))sug.move=best;
+    const from=sug.move||h;
+    const visible=foes.filter(function(f){return los(from.x,from.y,f.x,f.y)});
+    if(!visible.length){sug.action="defend";sug.why="No clear shot from anywhere you can reach \u2014 guard up.";return sug}
+    visible.sort(function(a,b){return a.hp-b.hp});
+    if(ch.action2&&ch.action2Uses>0&&(visible.length>=2||visible[0].hp<=6)){
+      sug.action="ability";sug.why="Three darts, no roll to miss. Certain damage while you hold distance.";
+    }else{
+      sug.action="attack";sug.target=s.foes.indexOf(visible[0]);
+      sug.why="Keep your range and make them cross open ground to reach you.";
+    }
+    return sug;
+  }
+  // melee: fight what's in your face first — breaking away just hands them a free swing
+  let tgt,ti;
+  if(adjacent.length){
+    tgt=adjacent.slice().sort(function(a,b){return a.hp-b.hp})[0];
+    ti=s.foes.indexOf(tgt);
+    if(ch.action2&&ch.action2.id==="aimed_strike"&&ch.action2Uses>0){
+      sug.action="ability";sug.target=ti;sug.why="Take the opening \u2014 advantage, and extra steel if it lands.";
+    }else{sug.action="attack";sug.target=ti;sug.why=adjacent.length>1?"Surrounded \u2014 drop the weaker one and thin the pack.":"It's in your face. Don't turn your back \u2014 cut it down."}
+    return sug;
+  }
+  tgt=foes.slice().sort(function(a,b){
+    const da=cheb(h,a),db=cheb(h,b);
+    if(da!==db)return da-db;
+    return (a.kind==="archer"?-1:1)-(b.kind==="archer"?-1:1);
+  })[0];
+  ti=s.foes.indexOf(tgt);
+  const field=bfsField(tgt.x,tgt.y);
+  let best=null,bestD=field.get(key(h.x,h.y));if(bestD===undefined)bestD=999;
+  reach.forEach(function(_,k){
+    const p=k.split(","),x=+p[0],y=+p[1];
+    const fd=field.get(k);if(fd===undefined)return;
+    if(fd<bestD){bestD=fd;best={x:x,y:y}}
+  });
+  if(best)sug.move=best;
+  const after=sug.move||h;
+  if(cheb(after,tgt)<=1){
+    if(ch.action2&&ch.action2.id==="aimed_strike"&&ch.action2Uses>0){
+      sug.action="ability";sug.target=ti;sug.why="Close the gap and take the opening \u2014 advantage on the strike.";
+    }else{sug.action="attack";sug.target=ti;sug.why="Close the gap and swing before it can slip away."}
+  }else{
+    sug.action="defend";sug.target=ti;
+    sug.why="You can't reach them this turn. Advance behind your guard \u2014 let their arrows find nothing.";
+  }
+  return sug;
+}
+/* CORE-END */
+
+/* =========================================================================
+   UI layer — DOM, timing, audio. Nothing below is game logic.
+   ========================================================================= */
+(function(){
+"use strict";
+const $=function(id){return document.getElementById(id)};
+const G={ch:null,cls:null,sp:null,flags:{opener:"normal",known:false},combat:null,phase:"idle",
+  satchelTaken:false,
+  stats:{rolls:0,crits:0,fumbles:0,dmgDealt:0,dmgTaken:0,checksMade:0,checksPassed:0}};
+RNG.seed((Date.now()^0x9E3779B9)>>>0);
+
+/* ---- audio ---- */
+let AC=null;
+function audioInit(){try{const C=window.AudioContext||window.webkitAudioContext;if(C&&!AC)AC=new C()}catch(e){}}
+function blip(freq,dur,type,gain){
+  if(!AC)return;try{
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||"triangle";o.frequency.value=freq;
+    g.gain.setValueAtTime(gain||0.06,AC.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001,AC.currentTime+(dur||0.12));
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(dur||0.12));
+  }catch(e){}}
+function sndTick(){blip(700+Math.random()*500,0.03,"square",0.025)}
+function sndLand(good){blip(good?520:180,0.25,"triangle",0.08);if(good)setTimeout(function(){blip(780,0.2,"triangle",0.06)},90)}
+function sndHit(){blip(140,0.15,"sawtooth",0.07)}
+function sndStep(){blip(300,0.05,"triangle",0.03)}
+
+function show(id){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on")});
+  $(id).classList.add("on");
+  const hdrOn=(id==="sc-scene"||id==="sc-combat");
+  $("hdr").classList.toggle("on",hdrOn);
+  $("minisheet").classList.remove("on");
+  if(id==="sc-scene")$("map-slot-scene").appendChild($("map"));
+  if(id==="sc-combat")$("map-slot-combat").appendChild($("map"));
+  $("map").style.display=hdrOn?"block":"none";
+}
+
+/* ---- board rendering ---- */
+function buildGrid(){
+  const g=$("grid");g.innerHTML="";
+  for(let y=0;y<MAP.h;y++)for(let x=0;x<MAP.w;x++){
+    const t=terrain(x,y);
+    const el=document.createElement("div");
+    el.className="tile"+((x+y)%2?" alt":"");
+    if(t==="T")el.className+=" tree";
+    if(t==="W")el.className+=" wall";
+    if(t==="D")el.className+=" door";
+    if(y===5)el.className+=" road";
+    el.dataset.x=x;el.dataset.y=y;
+    el.addEventListener("click",function(){onTileTap(x,y)});
+    g.appendChild(el);
+  }
+}
+function tileEl(x,y){return $("grid").children[y*MAP.w+x]}
+function setToken(id,cls,x,y,label){
+  let tk=$(id);
+  if(!tk){tk=document.createElement("div");tk.id=id;$("map").appendChild(tk)}
+  tk.className="token "+cls;
+  tk.textContent=label;
+  tk.style.left=((x+0.5)/MAP.w*100)+"%";
+  tk.style.top=((y+0.5)/MAP.h*100)+"%";
+  return tk;
+}
+function removeToken(id){const tk=$(id);if(tk)tk.classList.add("gone")}
+function clearHighlights(){document.querySelectorAll(".tile.hl").forEach(function(t){t.classList.remove("hl","oa")})}
+function drawSatchel(on){
+  const el=tileEl(6,4);el.classList.toggle("satch",on);
+}
+function drawExploration(nodeId){
+  const n=SCENES.nodes[nodeId];
+  clearHighlights();
+  drawSatchel(!G.satchelTaken&&nodeId!=="approach");
+  if(n.pos)setToken("tk-hero","hero",n.pos[0],n.pos[1],heroInitial());
+  if(nodeId==="approach"){
+    const o=OPENERS[G.flags.opener]||OPENERS.normal;
+    setToken("tk-hero","hero",o.hero[0],o.hero[1],heroInitial());
+  }
+  if(G.flags.known){
+    setToken("tk-f0","stab",3,1,"g");
+    setToken("tk-f1","arch",5,1,"g");
+  }
+}
+function heroInitial(){return (G.ch&&G.ch.name?G.ch.name:"?").charAt(0).toUpperCase()}
+function drawCombat(){
+  const s=G.combat;if(!s)return;
+  drawSatchel(false);
+  setToken("tk-hero","hero",s.pos.hero.x,s.pos.hero.y,heroInitial());
+  s.foes.forEach(function(f,i){
+    if(f.hp<=0){removeToken("tk-f"+i);return}
+    setToken("tk-f"+i,f.kind==="archer"?"arch":"stab",f.x,f.y,"g");
+  });
+}
+
+/* ---- creation ---- */
+function cardBtn(t,dsub,fn){
+  const b=document.createElement("button");b.className="card";
+  b.innerHTML='<span class="t">'+t+'</span><span class="d">'+dsub+'</span>';
+  b.addEventListener("click",fn);return b;
+}
+Object.keys(CLASSES).forEach(function(k){
+  const c=CLASSES[k];
+  const extra=(c.action2?c.action2.name+": "+c.action2.desc:"")+(c.bonus?c.bonus.name+": "+c.bonus.desc:"");
+  $("class-cards").appendChild(cardBtn(c.name,c.blurb+"<br><span style='color:var(--gold)'>"+extra+"</span>",
+    function(){G.cls=k;show("sc-species")}));
+});
+Object.keys(SPECIES).forEach(function(k){
+  const s=SPECIES[k];
+  $("species-cards").appendChild(cardBtn(s.name,s.blurb+"<br><span style='color:var(--gold)'>"+s.trait+"</span>",
+    function(){G.sp=k;renderNameStep();show("sc-name")}));
+});
+const NAMES=["Bramble","Vesk","Odri","Corven","Maple","Thessaly","Grim","Pinna","Ashvale","Rook","Seffa","Dornic","Wren","Kettle","Ilyan","Marrow"];
+$("btn-randname").addEventListener("click",function(){
+  $("name-input").value=NAMES[Math.floor(Math.random()*NAMES.length)];renderNameStep();
+});
+$("name-input").addEventListener("input",renderNameStep);
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function sheetHTML(ch){
+  const st=ch.stats;
+  function cell(k,label){const m=mod(st[k]);return'<div class="stat"><b>'+st[k]+" <small style='font-size:12px;color:#7a6a45'>("+(m>=0?"+":"")+m+")</small></b><span>"+label+"</span></div>"}
+  const kit=[ch.weapon.name];
+  if(ch.action2)kit.push(ch.action2.name+" \u00d7"+ch.action2Uses);
+  if(ch.bonus)kit.push(ch.bonus.name+" \u00d7"+ch.bonusUses);
+  if(ch.potion)kit.push("Potion");
+  return '<div class="sheet">'
+    +'<div class="nm">'+esc(ch.name)+'</div>'
+    +'<div class="cl">Level 1 '+ch.speciesName+" "+ch.className+"</div>"
+    +'<div class="grid">'+cell("str","Str")+cell("dex","Dex")+cell("con","Con")+cell("int","Int")+cell("wis","Wis")+cell("cha","Cha")+'</div>'
+    +'<div class="row"><span>HP <b>'+ch.hp+"/"+ch.maxHp+'</b></span><span>AC <b>'+ch.ac+'</b> <small>('+ch.acWhy+')</small></span></div>'
+    +'<div class="row"><span>'+kit.join(" &middot; ")+'</span></div>'
+    +'<div class="trait">'+ch.trait+(ch.inspiration?" (available)":"")+'</div>'
+    +'</div>';
+}
+function renderNameStep(){
+  const nm=$("name-input").value.trim()||"Nameless";
+  $("sheet-slot").innerHTML=sheetHTML(buildCharacter(G.cls,G.sp,nm));
+}
+$("btn-begin").addEventListener("click",function(){
+  G.ch=buildCharacter(G.cls,G.sp,$("name-input").value.trim()||"Nameless");
+  startScene();
+});
+$("btn-sheet").addEventListener("click",function(){
+  const m=$("minisheet");
+  if(m.classList.contains("on")){m.classList.remove("on");return}
+  m.innerHTML=sheetHTML(G.ch);m.classList.add("on");
+});
+
+/* ---- scene ---- */
+function dmSay(box,lines,then){
+  let i=0;
+  (function next(){
+    if(i>=lines.length){if(then)then();return}
+    const p=document.createElement("p");p.className="dmvoice dmline";p.innerHTML=lines[i];
+    box.appendChild(p);
+    requestAnimationFrame(function(){requestAnimationFrame(function(){p.classList.add("in")})});
+    box.scrollTop=box.scrollHeight;
+    i++;setTimeout(next,i===1?150:620);
+  })();
+}
+function youSay(t){
+  const p=document.createElement("p");p.className="youline";p.textContent=t;
+  $("log").appendChild(p);$("log").scrollTop=$("log").scrollHeight;
+}
+function sysSay(box,html){
+  const p=document.createElement("p");p.className="sysline";p.innerHTML=html;
+  box.appendChild(p);box.scrollTop=box.scrollHeight;
+}
+function startScene(){
+  show("sc-scene");$("log").innerHTML="";buildGrid();
+  enterNode(SCENES.start);
+}
+function enterNode(id){
+  const n=SCENES.nodes[id];
+  $("choices").innerHTML="";
+  if(n.set){Object.assign(G.flags,n.set);if(n.set.potion){G.ch.potion=true;G.satchelTaken=true}}
+  if(id==="satchel_fail")G.satchelTaken=true;
+  drawExploration(id);sndStep();
+  dmSay($("log"),n.dm,function(){
+    if(n.dmg){
+      const dmg=d(n.dmg[1]);G.ch.hp=Math.max(1,G.ch.hp-dmg);G.stats.dmgTaken+=dmg;
+      sysSay($("log"),"The needle costs you <b class='result-bad'>"+dmg+" HP</b> ("+G.ch.hp+"/"+G.ch.maxHp+" left).");
+    }
+    if(n.combat){setTimeout(startCombat,700);return}
+    if(n.next){setTimeout(function(){enterNode(n.next)},450);return}
+    n.choices.forEach(function(c){
+      const b=document.createElement("button");
+      let inner=c.label;
+      if(c.skill){
+        const bonus=checkBonus(G.ch,c.skill);
+        inner+='<span class="chk">'+skillName(c.skill)+" check &middot; DC "+c.dc+" &middot; your bonus "+(bonus>=0?"+":"")+bonus+"</span>";
+      }
+      b.innerHTML=inner;
+      b.addEventListener("click",function(){
+        $("choices").innerHTML="";youSay(c.label);
+        if(!c.skill){enterNode(c.goto);return}
+        openCheck(c);
+      });
+      $("choices").appendChild(b);
+    });
+    markGuided();
+  });
+}
+function skillName(s){return{stealth:"Stealth",survival:"Survival",intimidation:"Intimidation",perception:"Perception"}[s]||s}
+function markGuided(){
+  let best=null,bestB=-99;
+  $("choices").querySelectorAll("button").forEach(function(b){
+    const m=b.innerHTML.match(/your bonus \+?(-?\d+)/);
+    if(m&&+m[1]>bestB){bestB=+m[1];best=b}
+  });
+  if(best&&bestB>=2){const s=document.createElement("span");s.className="rec";
+    s.textContent="The GM glances at your sheet: \u201cthis one plays to your strengths.\u201d";best.appendChild(s)}
+}
+
+/* ---- the d20 overlay (scene checks AND combat attacks) ---- */
+function openRoll(cfg){
+  // cfg: {why, aux, onRoll(setMath, done)}
+  $("roll-why").textContent=cfg.why;
+  $("roll-aux").textContent=cfg.aux||"";
+  $("roll-math").innerHTML="";$("die").textContent="?";$("die").className="d20";
+  const sk=$("roll-skip");if(sk)sk.style.display="none";
+  $("roll-btn").textContent="Roll the d20";$("roll-btn").disabled=false;
+  $("roll-btn").onclick=cfg.onRoll;
+  $("roll").classList.add("on");
+}
+function closeRoll(){$("roll").classList.remove("on");$("roll-btn").disabled=false}
+// generic dice overlay: one tap rolls damage/healing dice, shows the result, then continues
+function openDiceRoll(cfg){
+  openRoll({why:cfg.why,aux:cfg.aux||"",onRoll:function(){
+    $("roll-btn").disabled=true;
+    const die=$("die");die.classList.add("tumble");
+    let n=0;const iv=setInterval(function(){die.textContent=d(9);sndTick();n++;
+      if(n>=5){clearInterval(iv);die.classList.remove("tumble");
+        const r=cfg.make();
+        die.textContent=r.total!==undefined?r.total:"\u2726";
+        $("roll-math").innerHTML=r.text;
+        sndLand(!!r.good);
+        setTimeout(function(){closeRoll();
+          if(r.ev)playEvents(r.ev,cfg.then||function(){});
+          else if(cfg.then)cfg.then();
+        },650);
+      }},65);
+  }});
+  $("roll-btn").textContent=cfg.btn||"Roll";
+}
+function tumble(finalVal,fast,done){
+  const die=$("die");die.classList.add("tumble");
+  let n=0;const ticks=fast?7:12;
+  const iv=setInterval(function(){die.textContent=d(20);sndTick();n++;
+    if(n>=ticks){clearInterval(iv);die.classList.remove("tumble");
+      die.textContent=finalVal;
+      if(finalVal===20)die.classList.add("crit");
+      if(finalVal===1)die.classList.add("fumb");
+      done()}},65);
+}
+function openCheck(c){
+  const bonus=checkBonus(G.ch,c.skill);
+  const adv=G.ch.keenSenses&&c.skill==="perception";
+  openRoll({why:"\u201c"+skillName(c.skill)+", DC "+c.dc+". Roll me a d20.\u201d",
+    aux:adv?"Keen Senses: roll twice, keep the higher.":"",
+    onRoll:function(){doCheckRoll(c)}});
+}
+function doCheckRoll(c){
+  $("roll-btn").disabled=true;
+  const res=skillCheck(G.ch,c.skill,c.dc);
+  G.stats.rolls++;G.stats.checksMade++;if(res.success)G.stats.checksPassed++;
+  if(res.roll.value===20)G.stats.crits++;if(res.roll.value===1)G.stats.fumbles++;
+  tumble(res.roll.value,false,function(){
+    const parts=[];
+    if(res.roll.mode==="adv")parts.push("rolled "+res.roll.rolls.join(" & ")+", kept "+res.roll.value);
+    else parts.push("d20 \u2192 "+res.roll.value);
+    if(res.roll.lucky)parts.push("Lucky rerolled a 1!");
+    parts.push((res.bonus>=0?"+":"")+res.bonus+" "+skillName(c.skill));
+    $("roll-math").innerHTML=parts.join(" &middot; ")
+      +"<br><b class='"+(res.success?"ok":"bad")+"'>"+res.total+" vs DC "+res.dc+" \u2014 "+(res.success?"Success":"Failure")+"</b>";
+    sndLand(res.success);
+    if(!res.success&&G.ch.inspiration){
+      $("roll-btn").disabled=false;$("roll-btn").textContent="Use Heroic Inspiration \u2014 reroll";
+      $("roll-btn").onclick=function(){G.ch.inspiration=false;$("roll-aux").textContent="Inspiration spent.";doCheckRoll(c)};
+      addSkipBtn(function(){finishCheck(c,res)});return;
+    }
+    finishCheck(c,res);
+  });
+}
+function addSkipBtn(fn){
+  let sk=$("roll-skip");
+  if(!sk){sk=document.createElement("button");sk.id="roll-skip";sk.className="ghost";$("roll").appendChild(sk)}
+  sk.style.display="block";sk.textContent="Accept the failure";sk.onclick=fn;
+}
+function finishCheck(c,res){
+  setTimeout(function(){
+    closeRoll();
+    sysSay($("log"),skillName(c.skill)+" "+res.total+" vs DC "+res.dc+" \u2014 "+(res.success?"<b class='result-ok'>success</b>":"<b class='result-bad'>failure</b>"));
+    enterNode(res.success?c.ok:c.fail);
+  },700);
+}
+
+/* ---- combat ---- */
+const OPENER_TEXT={
+  surprise:"They never heard you coming. <b class='result-ok'>Strike first \u2014 your first attack has advantage.</b>",
+  prepared:"You read them before they read you. <b class='result-ok'>You move first.</b>",
+  shaken:"Your voice still rings in their ears \u2014 their first swings will be <b class='result-ok'>wild and wide</b>, and you move first.",
+  normal:"Steel out, eyes up. Even footing.",
+  ambushed:"They circled while you blundered. <b class='result-bad'>They act first \u2014 and their opening attacks have advantage.</b>"
+};
+let targeting=false;
+function startCombat(){
+  G.combat=newCombat(G.ch,G.flags.opener);
+  show("sc-combat");$("clog").innerHTML="";targeting=false;
+  $("hb-name").textContent=G.ch.name;
+  clogLine(OPENER_TEXT[G.flags.opener]||OPENER_TEXT.normal);
+  drawCombat();renderChrome();
+  if(G.combat.goblinsFirst){
+    lockActions(true);G.phase="anim";
+    setTimeout(function(){playEvents(goblinPhase(G.combat),function(){
+      if(!G.combat)return;
+      if(G.combat.over){setTimeout(endCombat,900)}else beginHeroTurn();
+    })},700);
+  }else beginHeroTurn();
+}
+function clogLine(html){const p=document.createElement("p");p.className="sysline";p.style.fontSize="13px";
+  p.innerHTML=html;$("clog").appendChild(p);$("clog").scrollTop=$("clog").scrollHeight}
+function renderChrome(){
+  const s=G.combat;if(!s)return;
+  // foe chips
+  $("foechips").innerHTML="";
+  const opts=attackOptions(s);
+  s.foes.forEach(function(f,i){
+    const b=document.createElement("button");
+    b.className="fchip"+(f.kind==="archer"?" archer":"")+(f.hp<=0?" dead":"");
+    let pips="";for(let p=0;p<f.maxHp;p++)pips+='<span class="pip'+(p<f.hp?"":" off")+'"></span>';
+    const o=opts[i];
+    b.innerHTML='<div class="fn">'+f.name+'</div><div class="fhp">'+pips+'</div>'
+      +'<div class="rng">'+(f.hp<=0?"down":o.why)+'</div>';
+    if(targeting&&o.ok)b.classList.add("targetable");
+    b.addEventListener("click",function(){if(targeting&&o.ok)beginHeroAttack(i,pendingAimed)});
+    $("foechips").appendChild(b);
+  });
+  // hero bar
+  const frac=s.hero.hp/s.hero.maxHp;
+  $("hpfill").style.width=Math.max(0,frac*100)+"%";
+  $("hpfill").className=frac<=0.35?"low":"";
+  $("hb-hp").textContent=s.hero.hp+" / "+s.hero.maxHp+" HP";
+  $("acbadge").textContent="AC "+s.hero.ac;
+  renderActionButtons();
+  drawCombat();
+}
+let pendingAimed=false;
+function renderActionButtons(){
+  const s=G.combat;if(!s)return;
+  const ch=s.hero;
+  $("bonusrow").innerHTML="";$("actions").innerHTML="";
+  if(s.over)return;
+  const sug=suggestAction(s);
+  // bonus row
+  const BONUS_DICE={potion:"Roll 2d4+2",second_wind:"Roll 1d10+1",healing_word:"Roll 2d4+3"};
+  function bb(label,which,dis){
+    const b=document.createElement("button");b.textContent=label;b.disabled=!!dis||s.bonusUsed;
+    if(sug.bonus===which)b.classList.add("recd");
+    b.addEventListener("click",function(){
+      openDiceRoll({why:"\u201c"+(which==="potion"?"Down it and roll.":"Say the word and roll.")+"\u201d",
+        btn:BONUS_DICE[which]||"Roll",
+        make:function(){
+          const ev=useBonus(G.combat,which);
+          if(!ev)return{text:"",good:false};
+          const heal=ev[0];G.stats.rolls+=(which==="second_wind"?1:2);
+          return{total:heal.amt,text:"<b class='ok'>+"+heal.amt+" HP</b> ("+heal.heroHp+"/"+G.ch.maxHp+")",ev:ev,good:true};
+        },
+        then:function(){renderChrome();refreshSuggest()}});
+    });
+    $("bonusrow").appendChild(b);
+  }
+  if(ch.bonus)bb(ch.bonus.name+" \u00d7"+ch.bonusUses,ch.bonus.id,ch.bonusUses<=0);
+  bb(ch.potion?"Potion (2d4+2)":"Potion \u2014 none","potion",!ch.potion);
+  // action row
+  const opts=attackOptions(s);
+  const anyTarget=opts.some(function(o){return o.ok});
+  function ab(label,sub,fn,dis,rec){
+    const b=document.createElement("button");
+    b.innerHTML=label+(sub?'<span class="u">'+sub+"</span>":"");
+    b.disabled=!!dis;if(rec)b.classList.add("recd");
+    b.addEventListener("click",fn);$("actions").appendChild(b);
+  }
+  ab("Attack",ch.weapon.name,function(){enterTargeting(false)},s.acted||!anyTarget,sug.action==="attack");
+  if(ch.action2){
+    if(ch.action2.id==="aimed_strike")
+      ab(ch.action2.name,ch.action2Uses+" left",function(){enterTargeting(true)},s.acted||!anyTarget||ch.action2Uses<=0,sug.action==="ability");
+    else
+      ab(ch.action2.name,ch.action2Uses+" left",function(){
+        const st=G.combat,hh=st.pos.hero;
+        const visible=st.foes.some(function(f){return f.hp>0&&los(hh.x,hh.y,f.x,f.y)});
+        if(!visible){clogLine("No goblin in sight \u2014 the darts need a target.");return}
+        openDiceRoll({why:"\u201cThree darts of force. Roll them.\u201d",btn:"Roll 3 \u00d7 (1d4+1)",
+          make:function(){
+            const ev=castMagicMissile(G.combat);
+            const total=ev.filter(function(e){return e.t==="dart"}).reduce(function(a,e){return a+e.dmg},0);
+            G.stats.rolls+=3;
+            return{text:"darts: "+ev.filter(function(e){return e.t==="dart"}).map(function(e){return e.dmg}).join(", ")
+              +" \u2014 <b class='ok'>"+total+" force damage</b>",ev:ev,good:true};
+          },then:afterHeroAction});
+      },s.acted||ch.action2Uses<=0,sug.action==="ability");
+  }else ab("\u2014","",function(){},true,false);
+  ab("Defend","their attacks at disadvantage",function(){
+    lockActions(true);playEvents(heroDefend(G.combat),afterHeroAction);
+  },s.acted,sug.action==="defend");
+  ab("Disengage","leave with no free swings, then move",function(){
+    const ev=heroDisengage(G.combat);
+    if(!ev)return;
+    playEvents(ev,function(){renderChrome();refreshSuggest()});
+  },s.acted||!anyFoeAdjacent(s),sug.action==="disengage");
+  if(s.disengaged&&s.acted&&!s.moved){
+    const stay=document.createElement("button");stay.className="ghost";stay.style.gridColumn="1 / -1";
+    stay.textContent="Stay put \u2014 end turn";
+    stay.addEventListener("click",function(){afterHeroAction()});
+    $("actions").appendChild(stay);
+  }
+}
+function lockActions(on){
+  document.querySelectorAll("#actions button,#bonusrow button").forEach(function(b){b.disabled=on||b.disabled});
+}
+function refreshSuggest(){
+  const s=G.combat;
+  if(!s||s.over){$("suggest").textContent="";return}
+  const sug=suggestAction(s);
+  let txt=sug.why;
+  if(sug.bonus==="potion")txt="Drink the potion first \u2014 "+txt;
+  else if(sug.bonus)txt=(s.hero.bonus?s.hero.bonus.name:"")+" first \u2014 "+txt;
+  $("suggest").innerHTML="The GM leans in: \u201c"+txt+"\u201d";
+  // movement highlight (gold = safe, red = provokes an opportunity attack)
+  clearHighlights();
+  if(!s.moved&&(!s.acted||s.disengaged)){
+    heroReach(s).forEach(function(_,k){
+      const p=k.split(","),x=+p[0],y=+p[1];
+      if(x===s.pos.hero.x&&y===s.pos.hero.y)return;
+      const el=tileEl(x,y);el.classList.add("hl");
+      if(moveProvokers(s,x,y).length)el.classList.add("oa");
+    });
+  }
+}
+function beginHeroTurn(){
+  const s=G.combat;if(!s||s.over)return;
+  targeting=false;pendingAimed=false;
+  renderChrome();refreshSuggest();
+  clogLine("<span style='color:var(--gold)'>Round "+s.round+" \u2014 your turn.</span> Tap a glowing tile to move, then act."+(anyFoeAdjacent(s)?" <span class='result-bad'>Red tiles provoke a free swing as you break away.</span>":""));
+}
+function onTileTap(x,y){
+  const s=G.combat;
+  if(!s||s.over||G.phase==="anim")return;
+  if(!$("sc-combat").classList.contains("on"))return;
+  const ev=moveHero(s,x,y);
+  if(!ev)return;
+  sndStep();clearHighlights();
+  playEvents(ev,function(){
+    if(!G.combat)return;
+    if(G.combat.over){setTimeout(endCombat,900);return}
+    if(G.combat.disengaged){afterHeroAction();return}  // disengage spent the action; moving ends the turn
+    renderChrome();refreshSuggest();
+  });
+}
+function enterTargeting(aimed){
+  const s=G.combat;
+  const opts=attackOptions(s).filter(function(o){return o.ok});
+  if(!opts.length)return;
+  pendingAimed=aimed;
+  if(opts.length===1){beginHeroAttack(opts[0].i,aimed);return}
+  targeting=true;renderChrome();
+  clogLine("Tap a goblin to target it.");
+}
+function beginHeroAttack(targetIdx,aimed){
+  const s=G.combat;targeting=false;
+  const f=s.foes[targetIdx];
+  const mode=heroAttackMode(s,aimed);
+  const bonus=mod(s.hero.stats[s.hero.weapon.ability])+s.hero.prof;
+  openRoll({
+    why:"\u201c"+s.hero.weapon.name+" at the "+f.name+" \u2014 AC "+f.ac+". Roll to hit.\u201d",
+    aux:(mode==="adv"?"Advantage: roll twice, keep the higher. ":mode==="dis"?"Disadvantage \u2014 they're in your face: roll twice, keep the lower. ":"")+"Your bonus +"+bonus,
+    onRoll:function(){
+      $("roll-btn").disabled=true;
+      const roll=rollD20(s.hero,mode);
+      G.stats.rolls++;
+      if(roll.value===20)G.stats.crits++;if(roll.value===1)G.stats.fumbles++;
+      tumble(roll.value,true,function(){
+        const ev=resolveHeroAttack(s,targetIdx,roll,aimed);
+        const a=ev[0],atk=a.atk;
+        let l1=(roll.mode!=="normal"?"rolled "+roll.rolls.join(" & ")+", kept "+roll.value:"d20 \u2192 "+roll.value)
+          +(roll.lucky?" &middot; Lucky rerolled a 1!":"")+" &middot; +"+bonus;
+        if(a.t==="heromiss"){
+          $("roll-math").innerHTML=l1+"<br><b class='bad'>"+atk.total+" vs AC "+atk.ac+" \u2014 miss</b>";
+          sndLand(false);
+          setTimeout(function(){closeRoll();playEvents(ev,afterHeroAction)},650);
+          return;
+        }
+        // HIT: now roll the damage dice yourself
+        $("roll-math").innerHTML=l1+"<br><b class='ok'>"+atk.total+" vs AC "+atk.ac+" \u2014 HIT"+(atk.crit?" (CRIT!)":"")+"</b>";
+        sndLand(true);
+        const w=s.hero.weapon;
+        const nDice=(atk.crit?2:1),extra=aimed?(atk.crit?2:1):0;
+        const label="Roll damage \u2014 "+nDice+"d"+w.die+(extra?" + "+extra+"d6":"")+(w.noDmgMod?"":"+"+mod(s.hero.stats[w.ability]))+(atk.crit?" (CRIT: doubled dice!)":"");
+        $("roll-btn").textContent=label;$("roll-btn").disabled=false;
+        $("roll-btn").onclick=function(){
+          $("roll-btn").disabled=true;
+          const die=$("die");die.classList.add("tumble");
+          let n=0;const iv=setInterval(function(){die.textContent=d(w.die);sndTick();n++;
+            if(n>=5){clearInterval(iv);die.classList.remove("tumble");
+              const dmg=rollHeroDamage(s.hero,atk.crit,aimed);
+              G.stats.rolls+=dmg.dice.length;
+              die.textContent=dmg.total;
+              $("roll-math").innerHTML="damage: "+dmg.dice.map(function(x){return"d"+x.die+"\u2192"+x.val}).join(" + ")
+                +(dmg.mod?" +"+dmg.mod:"")+" = <b class='ok'>"+dmg.total+"</b>";
+              sndHit();
+              const ev2=applyHeroDamage(s,targetIdx,dmg,aimed,atk.crit);
+              setTimeout(function(){closeRoll();playEvents(ev.concat(ev2),afterHeroAction)},650);
+            }},65);
+        };
+      });
+    }
+  });
+}
+function afterHeroAction(){
+  const s=G.combat;if(!s)return;
+  if(s.over){setTimeout(endCombat,900);return}
+  setTimeout(function(){
+    playEvents(endHeroTurn(s),function(){
+      if(!G.combat)return;
+      if(G.combat.over){setTimeout(endCombat,900)}else beginHeroTurn();
+    });
+  },350);
+}
+function flashToken(id){const tk=$(id);if(tk){tk.classList.remove("hurt");void tk.offsetWidth;tk.classList.add("hurt")}}
+function playEvents(ev,done){
+  if(!ev){if(done)done();return}
+  G.phase="anim";let i=0;
+  (function next(){
+    if(!G.combat){G.phase="idle";return}
+    if(i>=ev.length){G.phase="idle";renderChrome();if(done)done();return}
+    const e=ev[i];i++;
+    if(e.t==="herohit"){G.stats.dmgDealt+=e.dmg;flashToken("tk-f"+e.i);sndHit();
+      clogLine("Your "+(e.aimed?"aimed strike":"blow")+" lands on the "+e.foe+": <b class='result-ok'>"+e.dmg+" damage"+(e.crit?" (CRIT!)":"")+"</b>"+(e.killed?" &mdash; <b class='result-ok'>it drops.</b>":""))}
+    else if(e.t==="heroattack"){/* to-hit shown in the overlay; damage line follows */}
+    else if(e.t==="heromove"){/* token transition handles it */}
+    else if(e.t==="disengage"){clogLine("You disengage \u2014 you'll leave no opening as you go. <span style='color:var(--gold)'>Now move.</span>")}
+    else if(e.t==="nimble"){clogLine("The "+e.foe+" slips back without exposing itself \u2014 <em>Nimble Escape</em>. No free swing for you.")}
+    else if(e.t==="heromiss"){clogLine("Your swing at the "+e.foe+" goes wide \u2014 <b class='result-bad'>miss.</b>")}
+    else if(e.t==="dart"){G.stats.dmgDealt+=e.dmg;flashToken("tk-f"+e.i);
+      clogLine("A dart of force slams the "+e.foe+": <b class='result-ok'>"+e.dmg+"</b>"+(e.killed?" &mdash; <b class='result-ok'>it folds.</b>":""))}
+    else if(e.t==="heal"){clogLine(e.name+": <b class='result-ok'>+"+e.amt+" HP</b> ("+e.heroHp+"/"+G.ch.maxHp+")")}
+    else if(e.t==="defend"){clogLine("You advance behind your guard \u2014 their attacks at disadvantage.")}
+    else if(e.t==="foemove"){sndStep()}
+    else if(e.t==="foehit"){G.stats.rolls++;G.stats.dmgTaken+=e.dmg;flashToken("tk-hero");sndHit();
+      clogLine((e.oa?"<b class='result-bad'>Opportunity attack!</b> You turned your back \u2014 the ":"The ")+e.foe+(e.ranged?" looses an arrow":" cuts at you")+": "+foeMath(e.atk)+" \u2014 <b class='result-bad'>"+e.dmg+" damage</b> ("+e.heroHp+"/"+G.ch.maxHp+")")}
+    else if(e.t==="foemiss"){G.stats.rolls++;
+      clogLine((e.oa?"<b style='color:var(--gold)'>Opportunity attack</b> as you break away \u2014 the ":"The ")+e.foe+(e.ranged?"'s arrow hisses past":" lunges")+": "+foeMath(e.atk)+" \u2014 <b class='result-ok'>it misses.</b>")}
+    else if(e.t==="down"){clogLine("<b class='result-bad'>The world tilts. You go down.</b>")}
+    else if(e.t==="victory"){clogLine("<b class='result-ok'>The waystation goes quiet.</b>")}
+    else if(e.t==="exhaust"){clogLine("<b class='result-bad'>You can't keep this up \u2014 they wear you down.</b>")}
+    drawCombat();
+    const frac=G.combat.hero.hp/G.combat.hero.maxHp;
+    $("hpfill").style.width=Math.max(0,frac*100)+"%";
+    $("hpfill").className=frac<=0.35?"low":"";
+    $("hb-hp").textContent=G.combat.hero.hp+" / "+G.combat.hero.maxHp+" HP";
+    setTimeout(next,e.t==="foemove"?480:(e.t==="dart"?330:600));
+  })();
+}
+function foeMath(a){
+  let s="d20\u2192"+a.roll.value;
+  if(a.roll.mode!=="normal")s="d20\u00d72\u2192["+a.roll.rolls.join(",")+"] keep "+a.roll.value;
+  return s+" +"+a.bonus+" = "+a.total+" vs your AC "+a.ac;
+}
+function endCombat(){
+  if(!G.combat)return;
+  const won=G.combat.won;
+  $("recap-eyebrow").textContent=won?"Session end \u00b7 Victory":"Session end \u00b7 Defeat";
+  $("recap-title").textContent=won?"The Lantern Road is open.":"Dragged back to the road.";
+  $("recap-text").innerHTML=won
+    ?"The GM closes the folder. \u201cThe lantern burns for travelers again \u2014 because of "+esc(G.ch.name)+". That's the slice. The campaign starts here.\u201d"
+    :"You wake in a farmer's cart, bandaged and furious. The GM shrugs, kindly: \u201cDice giveth. Same time next week?\u201d";
+  const st=G.stats;
+  $("recap-stats").innerHTML=
+    '<div class="rs"><b>'+st.rolls+'</b><span>dice rolled</span></div>'
+    +'<div class="rs"><b>'+st.checksPassed+"/"+st.checksMade+'</b><span>checks passed</span></div>'
+    +'<div class="rs"><b>'+st.dmgDealt+'</b><span>damage dealt</span></div>'
+    +'<div class="rs"><b>'+st.crits+' / '+st.fumbles+'</b><span>crits / nat 1s</span></div>';
+  show("sc-recap");
+}
+$("btn-again").addEventListener("click",function(){
+  G.ch=null;G.cls=null;G.sp=null;G.combat=null;G.flags={opener:"normal",known:false};
+  G.satchelTaken=false;targeting=false;G.phase="idle";
+  G.stats={rolls:0,crits:0,fumbles:0,dmgDealt:0,dmgTaken:0,checksMade:0,checksPassed:0};
+  $("name-input").value="";$("sheet-slot").innerHTML="";
+  ["tk-hero","tk-f0","tk-f1"].forEach(function(id){const t=$(id);if(t)t.remove()});
+  show("sc-class");
+});
+$("btn-sit").addEventListener("click",function(){audioInit();show("sc-class")});
+$("map").style.display="none";
+
+/* debug hook for headless smoke tests */
+window.__slice={G:G,RNG:RNG,show:show,startCombat:startCombat,enterNode:enterNode,
+  buildCharacter:buildCharacter,newCombat:newCombat,suggestAction:suggestAction,
+  moveHero:moveHero,moveProvokers:moveProvokers,heroDisengage:heroDisengage,
+  attackOptions:attackOptions,endHeroTurn:endHeroTurn,los:los};
+})();
+</script>
+</body>
+</html>
