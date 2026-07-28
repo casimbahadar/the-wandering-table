@@ -271,10 +271,10 @@ const CLASSES={
   fighter:{id:"fighter",name:"Fighter",blurb:"Heavy armor, a long blade, and the stubbornness to stay standing.",
     hitDie:10,stats:{str:16,dex:13,con:14,int:8,wis:12,cha:10},ac:16,acWhy:"Chain mail",
     weapon:{name:"Longsword",die:8,ability:"str",range:1},
-    action2:null,bonus:{id:"second_wind",name:"Second Wind",desc:"Bonus: recover 1d10+1 HP.",uses:1},
+    action2:null,bonus:{id:"second_wind",name:"Second Wind",desc:"Bonus: recover 1d10+1 HP.",uses:2},
     skills:["athletics","intimidation"]},
   rogue:{id:"rogue",name:"Rogue",blurb:"Quick hands, quiet feet, and a knife that finds the gap.",
-    hitDie:8,stats:{str:10,dex:16,con:13,int:12,wis:14,cha:8},ac:15,acWhy:"Leather armor",
+    hitDie:8,stats:{str:10,dex:16,con:13,int:12,wis:14,cha:8},ac:15,acWhy:"Studded leather",
     weapon:{name:"Shortsword",die:6,ability:"dex",range:1},
     action2:{id:"aimed_strike",name:"Aimed Strike",desc:"Attack with advantage; +1d6 damage on a hit.",uses:2},
     bonus:null,skills:["stealth","sleight","perception"]},
@@ -286,13 +286,13 @@ const CLASSES={
   cleric:{id:"cleric",name:"Cleric",blurb:"A mace in one hand, mercy in the other.",
     hitDie:8,stats:{str:16,dex:10,con:13,int:8,wis:15,cha:12},ac:15,acWhy:"Chain shirt + shield",
     weapon:{name:"Mace",die:6,ability:"str",range:1},
-    action2:null,bonus:{id:"healing_word",name:"Healing Word",desc:"Bonus: heal 2d4+3. You still act this turn.",uses:2},
+    action2:null,bonus:{id:"healing_word",name:"Healing Word",desc:"Bonus: heal 2d4+2. You still act this turn.",uses:2},
     skills:["insight","perception","medicine"]}
 };
 const SPECIES={
   human:{id:"human",name:"Human",blurb:"Resourceful to a fault.",trait:"Heroic Inspiration \u2014 reroll one failed roll, once."},
-  elf:{id:"elf",name:"Elf",blurb:"Nothing gets past those ears.",trait:"Keen Senses \u2014 advantage on Perception checks."},
-  dwarf:{id:"dwarf",name:"Dwarf",blurb:"Built like the mountain that raised them.",trait:"Stoneblood \u2014 +2 hit points."},
+  elf:{id:"elf",name:"Elf",blurb:"Nothing gets past those ears.",trait:"Keen Senses \u2014 proficiency in Perception."},
+  dwarf:{id:"dwarf",name:"Dwarf",blurb:"Built like the mountain that raised them.",trait:"Stoneblood \u2014 +1 hit point per level."},
   halfling:{id:"halfling",name:"Halfling",blurb:"Fortune's favorite child.",trait:"Lucky \u2014 reroll any natural 1."}
 };
 const SKILL_ABILITY={stealth:"dex",survival:"wis",intimidation:"cha",perception:"wis",sleight:"dex",
@@ -301,15 +301,18 @@ const SKILL_ABILITY={stealth:"dex",survival:"wis",intimidation:"cha",perception:
 function buildCharacter(clsId,spId,name){
   const c=CLASSES[clsId],sp=SPECIES[spId];
   const stats=Object.assign({},c.stats);
-  let maxHp=c.hitDie+mod(stats.con)+3;
-  if(spId==="dwarf")maxHp+=2;
+  let maxHp=c.hitDie+mod(stats.con);
+  if(spId==="dwarf")maxHp+=1;
+  const skills=c.skills.slice();
+  // Keen Senses: proficiency in Insight, Perception, or Survival (SRD 5.2)
+  if(spId==="elf")skills.push(skills.indexOf("perception")<0?"perception":"survival");
   return{name:name||"Nameless",clsId:clsId,spId:spId,className:c.name,speciesName:sp.name,
     stats:stats,prof:2,ac:c.ac,acWhy:c.acWhy,hp:maxHp,maxHp:maxHp,speed:6,
     weapon:c.weapon,
     action2:c.action2?Object.assign({},c.action2):null,action2Uses:c.action2?c.action2.uses:0,
     bonus:c.bonus?Object.assign({},c.bonus):null,bonusUses:c.bonus?c.bonus.uses:0,
-    skills:c.skills.slice(),trait:sp.trait,
-    inspiration:spId==="human",lucky:spId==="halfling",keenSenses:spId==="elf",
+    skills:skills,trait:sp.trait,
+    inspiration:spId==="human",lucky:spId==="halfling",
     potion:false};
 }
 function checkBonus(ch,skill){
@@ -317,8 +320,10 @@ function checkBonus(ch,skill){
   return mod(ch.stats[ab])+(ch.skills.indexOf(skill)>=0?ch.prof:0);
 }
 function rollD20(ch,mode){
+  // Luck rerolls a 1, but rerolls/replacements apply to only one die of an adv/dis pair (SRD 5.2)
+  let luckySpent=false;
   function one(){let r=d(20),rerolled=false;
-    if(ch&&ch.lucky&&r===1){r=d(20);rerolled=true}
+    if(ch&&ch.lucky&&r===1&&!luckySpent){r=d(20);rerolled=true;luckySpent=true}
     return{r:r,lucky:rerolled}}
   if(mode==="adv"||mode==="dis"){
     const a=one(),b=one();
@@ -329,9 +334,7 @@ function rollD20(ch,mode){
   return{value:a.r,rolls:[a.r],mode:"normal",lucky:a.lucky};
 }
 function skillCheck(ch,skill,dc){
-  let m="normal";
-  if(ch.keenSenses&&skill==="perception")m="adv";
-  const roll=rollD20(ch,m),bonus=checkBonus(ch,skill),total=roll.value+bonus;
+  const roll=rollD20(ch,"normal"),bonus=checkBonus(ch,skill),total=roll.value+bonus;
   return{roll:roll,bonus:bonus,total:total,dc:dc,skill:skill,success:total>=dc};
 }
 
@@ -362,6 +365,10 @@ function los(x0,y0,x1,y1){
   return true;
 }
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+// SRD 5.2 grid rule: diagonal movement can't cross the corner of a wall/tree
+function cutsCorner(x,y,dx,dy){
+  return dx!==0&&dy!==0&&(blockedAt(x+dx,y)||blockedAt(x,y+dy));
+}
 function unitAt(s,x,y){
   if(s.hero.hp>0&&s.pos.hero.x===x&&s.pos.hero.y===y)return"hero";
   for(let i=0;i<s.foes.length;i++)if(s.foes[i].hp>0&&s.foes[i].x===x&&s.foes[i].y===y)return i;
@@ -376,7 +383,7 @@ function bfsReach(s,from,steps,selfId){
     if(cd>=steps)continue;
     for(const dr of DIRS){
       const nx=c.x+dr[0],ny=c.y+dr[1],k=key(nx,ny);
-      if(!inBounds(nx,ny)||blockedAt(nx,ny)||dist.has(k))continue;
+      if(!inBounds(nx,ny)||blockedAt(nx,ny)||cutsCorner(c.x,c.y,dr[0],dr[1])||dist.has(k))continue;
       const u=unitAt(s,nx,ny);
       if(u!==null&&u!==selfId)continue;
       dist.set(k,cd+1);q.push({x:nx,y:ny});
@@ -392,7 +399,7 @@ function bfsField(tx,ty){
     const c=q.shift(),cd=dist.get(key(c.x,c.y));
     for(const dr of DIRS){
       const nx=c.x+dr[0],ny=c.y+dr[1],k=key(nx,ny);
-      if(!inBounds(nx,ny)||blockedAt(nx,ny)||dist.has(k))continue;
+      if(!inBounds(nx,ny)||blockedAt(nx,ny)||cutsCorner(c.x,c.y,dr[0],dr[1])||dist.has(k))continue;
       dist.set(k,cd+1);q.push({x:nx,y:ny});
     }
   }
@@ -412,10 +419,10 @@ const SCENES={
         {label:"Stride up the road and announce yourself",skill:"intimidation",dc:14,ok:"bold_ok",fail:"bold_fail"}
       ]},
     sneak_ok:{pos:[3,2],set:{opener:"surprise",known:true},dm:["You move like a rumor, pine to pine, until you can smell their cookfire.",
-      "Two of them \u2014 a stabber and one with a short bow \u2014 arguing over a stolen boot. Neither has any idea you exist. The first swing will be yours, and it will land hard."],next:"satchel"},
+      "Two of them \u2014 a stabber and one idly flipping a throwing knife \u2014 arguing over a stolen boot. Neither has any idea you exist. The first swing will be yours, and it will land hard."],next:"satchel"},
     sneak_fail:{pos:[2,3],set:{opener:"ambushed"},dm:["A branch cracks under your heel like a festival firework.",
       "The voices stop. Then \u2014 low, delighted \u2014 they start <em>spreading out</em>. They know these trees better than you do."],next:"satchel"},
-    scout_ok:{pos:[2,5],set:{opener:"prepared",known:true},dm:["The mud tells the whole story: two sets of bare goblin feet \u2014 one light and quick, one dug-in at the heels the way an archer stands.",
+    scout_ok:{pos:[2,5],set:{opener:"prepared",known:true},dm:["The mud tells the whole story: two sets of bare goblin feet \u2014 one light and quick, one circling sidelong the way a knife-thrower keeps its distance.",
       "Two of them, and you know their habits before they know your face. You'll move first."],next:"satchel"},
     scout_fail:{pos:[2,5],set:{opener:"normal"},dm:["Rain has churned the road into a gray soup. Tracks, yes \u2014 but how many, how fresh? The mud keeps its secrets.",
       "You'll be walking in with your eyes open and nothing else."],next:"satchel"},
@@ -439,16 +446,22 @@ const SCENES={
 };
 
 /* ---------- Combat ---------- */
+// SRD 5.2 statblocks: Archer = Goblin Warrior (shortbow/scimitar, +1d4 rider on Advantage);
+// Stabber / Slinger = Goblin Minion (dagger — melee, or thrown range 20/60 ft = 4/12 tiles).
+// rngN = normal range in tiles; ranged attacks beyond it have Disadvantage (long range).
 function makeFoe(kind,x,y){
-  if(kind==="archer")return{name:"Archer",kind:"archer",ac:15,maxHp:7,hp:7,atk:4,dmgDie:6,dmgMod:1,x:x,y:y};
-  return{name:"Stabber",kind:"stab",ac:15,maxHp:7,hp:7,atk:4,dmgDie:6,dmgMod:1,x:x,y:y};
+  if(kind==="archer")return{name:"Archer",kind:"archer",ac:15,maxHp:10,hp:10,atk:4,dmgDie:6,dmgMod:2,advRider:true,rngN:16,x:x,y:y};
+  if(kind==="skirm")return{name:"Slinger",kind:"skirm",ac:12,maxHp:7,hp:7,atk:4,dmgDie:4,dmgMod:2,advRider:false,rngN:4,x:x,y:y};
+  return{name:"Stabber",kind:"stab",ac:12,maxHp:7,hp:7,atk:4,dmgDie:4,dmgMod:2,advRider:false,rngN:1,x:x,y:y};
 }
+// Encounter budget (SRD 5.2): solo level-1 hero, Low difficulty = 50 XP.
+// Two Goblin Minions (25 XP each): one melee stabber + one dagger-throwing slinger.
 const OPENERS={
-  surprise:{hero:[4,2],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:true,goblinsFirst:false,shaken:false},
-  prepared:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:false},
-  shaken:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:true},
-  normal:{hero:[3,4],foes:[["stab",3,1],["archer",5,1]],heroFirstAdv:false,goblinsFirst:"coin",shaken:false},
-  ambushed:{hero:[2,5],foes:[["stab",2,4],["archer",5,2]],heroFirstAdv:false,goblinsFirst:true,shaken:false,ambushAdv:true}
+  surprise:{hero:[4,2],foes:[["stab",3,1],["skirm",5,1]],heroFirstAdv:true,goblinsFirst:false,shaken:false},
+  prepared:{hero:[3,4],foes:[["stab",3,1],["skirm",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:false},
+  shaken:{hero:[3,4],foes:[["stab",3,1],["skirm",5,1]],heroFirstAdv:false,goblinsFirst:false,shaken:true},
+  normal:{hero:[3,4],foes:[["stab",3,1],["skirm",5,1]],heroFirstAdv:false,goblinsFirst:"coin",shaken:false},
+  ambushed:{hero:[2,5],foes:[["stab",2,4],["skirm",6,1]],heroFirstAdv:false,goblinsFirst:true,shaken:false,ambushAdv:true}
 };
 function newCombat(ch,opener){
   const o=OPENERS[opener]||OPENERS.normal;
@@ -585,7 +598,7 @@ function useBonus(s,which){
     ch.bonusUses--;
     if(which==="second_wind"){const h=d(10)+1;ch.hp=Math.min(ch.maxHp,ch.hp+h);
       ev.push({t:"heal",name:"Second Wind",amt:h,heroHp:ch.hp})}
-    else if(which==="healing_word"){const h=d(4)+d(4)+3;ch.hp=Math.min(ch.maxHp,ch.hp+h);
+    else if(which==="healing_word"){const h=d(4)+d(4)+2;ch.hp=Math.min(ch.maxHp,ch.hp+h);
       ev.push({t:"heal",name:"Healing Word",amt:h,heroHp:ch.hp})}
   }
   s.bonusUsed=true;return ev;
@@ -596,12 +609,14 @@ function foeAttack(s,f,i,ev,ranged,oa){
   if(s.heroDefending)dis=true;
   if(s.foesShaken&&s.round===1)dis=true;
   if(ranged&&cheb(f,s.pos.hero)<=1)dis=true; // bow in someone's face
+  if(ranged&&cheb(f,s.pos.hero)>(f.rngN||16))dis=true; // beyond normal range (SRD long range)
   if(s.ambushAdv&&s.round===1)adv=true;      // caught flat-footed
   const mode=(adv&&!dis)?"adv":((dis&&!adv)?"dis":"normal");
   const roll=rollD20(null,mode);
   const atk=attackResult(roll,f.atk,s.hero.ac);
   if(atk.hit){
-    const dmg=d(f.dmgDie)+(atk.crit?d(f.dmgDie):0)+f.dmgMod;
+    let dmg=d(f.dmgDie)+(atk.crit?d(f.dmgDie):0)+f.dmgMod;
+    if(f.advRider&&mode==="adv")dmg+=d(4)+(atk.crit?d(4):0);
     s.hero.hp=Math.max(0,s.hero.hp-dmg);
     ev.push({t:"foehit",i:i,foe:f.name,ranged:ranged,oa:!!oa,atk:atk,dmg:dmg,heroHp:s.hero.hp});
   }else ev.push({t:"foemiss",i:i,foe:f.name,ranged:ranged,oa:!!oa,atk:atk});
@@ -630,16 +645,17 @@ function goblinPhase(s){
       if(cheb(f,h)>1)foeMoveTo(s,f,i,ev,function(x,y){
         const fd=field.get(key(x,y));return fd===undefined?999:fd});
       if(cheb(f,h)<=1)foeAttack(s,f,i,ev,false);
-    }else{ // archer: keep distance >=2 with line of sight, then shoot
+    }else{ // ranged goblin: keep distance >=2 (within normal range) with line of sight, then shoot
       const near=cheb(f,h)<=1,sight=los(f.x,f.y,h.x,h.y);
-      if(near||!sight){
+      const pref=Math.min(5,f.rngN||16);     // stay inside normal range — beyond it shots have disadvantage
+      if(near||!sight||cheb(f,h)>(f.rngN||16)){
         if(near)ev.push({t:"nimble",i:i,foe:f.name}); // Nimble Escape: bonus-action Disengage — no opening for you
         foeMoveTo(s,f,i,ev,function(x,y){
           const dd=Math.max(Math.abs(x-h.x),Math.abs(y-h.y));
           const seen=los(x,y,h.x,h.y);
           if(!seen)return 500-dd;            // last resort: hide far
           if(dd<2)return 100-dd;             // adjacent w/ sight: bad
-          return -Math.min(dd,5);            // prefer sighted range
+          return -Math.min(dd,pref);         // prefer sighted range up to normal range
         });
       }
       if(los(f.x,f.y,h.x,h.y))foeAttack(s,f,i,ev,true);
@@ -659,10 +675,10 @@ function suggestAction(s){
   const sug={move:null,bonus:null,action:"defend",target:0,why:""};
   if(!foes.length)return sug;
   if(!s.bonusUsed){
-    if(ch.potion&&frac<=0.3)sug.bonus="potion";
+    if(ch.potion&&frac<=0.5)sug.bonus="potion";
     else if(ch.bonus&&ch.bonusUses>0){
       if(ch.bonus.id==="second_wind"&&frac<=0.45)sug.bonus="second_wind";
-      if(ch.bonus.id==="healing_word"&&frac<=0.5)sug.bonus="healing_word";
+      if(ch.bonus.id==="healing_word"&&frac<=0.6)sug.bonus="healing_word";
     }
   }
   const reach=heroReach(s);
@@ -724,7 +740,7 @@ function suggestAction(s){
   tgt=foes.slice().sort(function(a,b){
     const da=cheb(h,a),db=cheb(h,b);
     if(da!==db)return da-db;
-    return (a.kind==="archer"?-1:1)-(b.kind==="archer"?-1:1);
+    return (a.rngN>1?-1:1)-(b.rngN>1?-1:1);
   })[0];
   ti=s.foes.indexOf(tgt);
   const field=bfsField(tgt.x,tgt.y);
@@ -838,7 +854,7 @@ function drawCombat(){
   setToken("tk-hero","hero",s.pos.hero.x,s.pos.hero.y,heroInitial());
   s.foes.forEach(function(f,i){
     if(f.hp<=0){removeToken("tk-f"+i);return}
-    setToken("tk-f"+i,f.kind==="archer"?"arch":"stab",f.x,f.y,"g");
+    setToken("tk-f"+i,f.rngN>1?"arch":"stab",f.x,f.y,"g");
   });
 }
 
@@ -1004,9 +1020,8 @@ function tumble(finalVal,fast,done){
 }
 function openCheck(c){
   const bonus=checkBonus(G.ch,c.skill);
-  const adv=G.ch.keenSenses&&c.skill==="perception";
   openRoll({why:"\u201c"+skillName(c.skill)+", DC "+c.dc+". Roll me a d20.\u201d",
-    aux:adv?"Keen Senses: roll twice, keep the higher.":"",
+    aux:"",
     onRoll:function(){doCheckRoll(c)}});
 }
 function doCheckRoll(c){
@@ -1076,7 +1091,7 @@ function renderChrome(){
   const opts=attackOptions(s);
   s.foes.forEach(function(f,i){
     const b=document.createElement("button");
-    b.className="fchip"+(f.kind==="archer"?" archer":"")+(f.hp<=0?" dead":"");
+    b.className="fchip"+(f.rngN>1?" archer":"")+(f.hp<=0?" dead":"");
     let pips="";for(let p=0;p<f.maxHp;p++)pips+='<span class="pip'+(p<f.hp?"":" off")+'"></span>';
     const o=opts[i];
     b.innerHTML='<div class="fn">'+f.name+'</div><div class="fhp">'+pips+'</div>'
@@ -1102,7 +1117,7 @@ function renderActionButtons(){
   if(s.over)return;
   const sug=suggestAction(s);
   // bonus row
-  const BONUS_DICE={potion:"Roll 2d4+2",second_wind:"Roll 1d10+1",healing_word:"Roll 2d4+3"};
+  const BONUS_DICE={potion:"Roll 2d4+2",second_wind:"Roll 1d10+1",healing_word:"Roll 2d4+2"};
   function bb(label,which,dis){
     const b=document.createElement("button");b.textContent=label;b.disabled=!!dis||s.bonusUsed;
     if(sug.bonus===which)b.classList.add("recd");

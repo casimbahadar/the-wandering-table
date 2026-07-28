@@ -8,7 +8,7 @@ if(!m){console.error("FAIL: CORE markers not found");process.exit(1)}
 const CORE=m[1];
 const factory=new Function(CORE+`
   return {RNG,d,mod,CLASSES,SPECIES,buildCharacter,checkBonus,rollD20,skillCheck,SCENES,
-          MAP,terrain,blockedAt,los,cheb,key,bfsReach,bfsField,unitAt,
+          MAP,terrain,blockedAt,los,cheb,key,bfsReach,bfsField,unitAt,makeFoe,foeAttack,
           OPENERS,newCombat,livingFoes,heroReach,moveHero,moveProvokers,heroDisengage,
           anyFoeAdjacent,attackOptions,heroAttackMode,rollHeroDamage,applyHeroDamage,
           resolveHeroAttack,heroAttackAuto,castMagicMissile,useBonus,heroDefend,
@@ -105,12 +105,100 @@ function ok(cond,label){if(cond){pass++}else{fail++;console.error("  FAIL:",labe
 for(const cls of Object.keys(C.CLASSES))for(const sp of Object.keys(C.SPECIES)){
   const ch=C.buildCharacter(cls,sp,"T");
   ok(ch.hp===ch.maxHp&&ch.hp>0,`hp positive ${cls}/${sp}`);
-  if(sp==="dwarf"){const base=C.buildCharacter(cls,"human","T");ok(ch.maxHp===base.maxHp+2,`dwarf +2hp ${cls}`)}
+  if(sp==="dwarf"){const base=C.buildCharacter(cls,"human","T");ok(ch.maxHp===base.maxHp+1,`dwarf +1hp (SRD Dwarven Toughness at level 1) ${cls}`)}
 }
 {
   const half=C.buildCharacter("rogue","halfling","T");
   C.RNG.seed(9);let c=0;for(let i=0;i<40000;i++)if(C.rollD20(half,"normal").value===1)c++;
   ok(c/40000>0.0005&&c/40000<0.01,`halfling nat-1 suppressed (~1/400): ${(c/400).toFixed(2)}%`);
+}
+
+/* ---------- 3b. SRD 5.2 fidelity: statblocks, kits, species, grid corners ---------- */
+{
+  // hero HP = max hit die + Con mod, no solo-tune bonus
+  ok(C.buildCharacter("fighter","human","T").maxHp===12,"fighter human 12 HP (d10 max + Con 2)");
+  ok(C.buildCharacter("rogue","human","T").maxHp===9,"rogue human 9 HP (d8 max + Con 1)");
+  ok(C.buildCharacter("wizard","human","T").maxHp===7,"wizard human 7 HP (d6 max + Con 1)");
+  ok(C.buildCharacter("cleric","human","T").maxHp===9,"cleric human 9 HP (d8 max + Con 1)");
+  // goblin statblocks: Warrior (AC 15, HP 10, 1d6+2, +1d4 rider) and Minion (AC 12, HP 7, 1d4+2)
+  const arch=C.makeFoe("archer",5,1);
+  ok(arch.ac===15&&arch.maxHp===10&&arch.atk===4&&arch.dmgDie===6&&arch.dmgMod===2&&arch.advRider===true,
+    "Archer matches SRD Goblin Warrior (AC 15, HP 10, +4, 1d6+2, +1d4 on Advantage)");
+  const s=C.newCombat(C.buildCharacter("fighter","human","T"),"prepared");
+  const stab=s.foes[0],skirm=s.foes[1];
+  ok(stab.ac===12&&stab.maxHp===7&&stab.atk===4&&stab.dmgDie===4&&stab.dmgMod===2&&!stab.advRider,
+    "Stabber matches SRD Goblin Minion (AC 12, HP 7, +4, 1d4+2)");
+  ok(skirm.ac===12&&skirm.maxHp===7&&skirm.atk===4&&skirm.dmgDie===4&&skirm.dmgMod===2&&skirm.rngN===4,
+    "Slinger is a Goblin Minion throwing daggers (range 20 ft = 4 tiles)");
+  // shipped encounter = 2 Goblin Minions = 50 XP = SRD Low difficulty for one level-1 character
+  ok(s.foes.length===2&&s.foes.every(f=>f.maxHp===7&&f.ac===12),"shipped encounter is two minions (50 XP Low budget)");
+  // long range: thrown dagger beyond 4 tiles rolls at disadvantage; shortbow's 16 tiles never binds here
+  {
+    const st=C.newCombat(C.buildCharacter("fighter","human","T"),"prepared"); // hero (3,4)
+    const far=C.makeFoe("skirm",8,0);st.foes[1]=far;                          // dist 5 > 4
+    const ev=[];C.foeAttack(st,far,1,ev,true);
+    ok(ev[0].atk.roll.mode==="dis","thrown dagger beyond normal range has disadvantage");
+    const near=C.makeFoe("skirm",5,4);st.foes[1]=near;                        // dist 2
+    const ev2=[];C.foeAttack(st,near,1,ev2,true);
+    ok(ev2[0].atk.roll.mode==="normal","thrown dagger inside normal range rolls normally");
+    const bow=C.makeFoe("archer",8,0);st.foes[1]=bow;
+    const ev3=[];C.foeAttack(st,bow,1,ev3,true);
+    ok(ev3[0].atk.roll.mode==="normal","shortbow normal range (80 ft) covers the whole map");
+  }
+  // Second Wind: two uses at level 1, 1d10+1 each
+  const f=C.buildCharacter("fighter","human","T");
+  const sf=C.newCombat(f,"prepared");f.hp=1;
+  const e1=C.useBonus(sf,"second_wind");
+  ok(Array.isArray(e1)&&e1[0].amt>=2&&e1[0].amt<=11,"Second Wind heals 1d10+1");
+  sf.bonusUsed=false;
+  ok(Array.isArray(C.useBonus(sf,"second_wind")),"Second Wind has a second use (SRD: twice)");
+  sf.bonusUsed=false;
+  ok(C.useBonus(sf,"second_wind")===null,"Second Wind has no third use");
+  // Healing Word: 2d4 + spellcasting mod (Wis 15 -> +2)
+  const cl=C.buildCharacter("cleric","human","T");
+  const sc=C.newCombat(cl,"prepared");cl.hp=1;
+  const e2=C.useBonus(sc,"healing_word");
+  ok(e2[0].amt>=4&&e2[0].amt<=10,"Healing Word heals 2d4+2");
+  // potion: 2d4+2 as a Bonus Action (shares the bonus slot)
+  const p=C.buildCharacter("fighter","human","T");p.potion=true;
+  const sp2=C.newCombat(p,"prepared");p.hp=1;
+  const e3=C.useBonus(sp2,"potion");
+  ok(e3[0].amt>=4&&e3[0].amt<=10,"potion heals 2d4+2");
+  ok(C.useBonus(sp2,"second_wind")===null,"potion consumes the turn's Bonus Action");
+  // Keen Senses: proficiency (not advantage) in Perception, or Survival if already proficient
+  ok(C.buildCharacter("fighter","elf","T").skills.includes("perception"),"elf fighter gains Perception proficiency");
+  ok(C.buildCharacter("rogue","elf","T").skills.includes("survival"),"elf rogue (already Perception-proficient) gains Survival");
+  ok(C.checkBonus(C.buildCharacter("fighter","elf","T"),"perception")===3,"elf fighter Perception +3 (Wis +1, prof +2)");
+  // Luck: only one die of an adv/dis pair may be rerolled -> a double-1 under dis stays a 1
+  const half=C.buildCharacter("rogue","halfling","T");
+  C.RNG.seed(31337);let ones=0;const NN=400000;
+  for(let i=0;i<NN;i++)if(C.rollD20(half,"dis").value===1)ones++;
+  // single reroll: P(dis result 1) = 1/400 (double-1s survive) + ~0.475% (lone 1 rerolled into a 1) ≈ 0.73%
+  // (the old both-dice reroll gives ≈ 0.50% — bounds sit between the two)
+  ok(ones/NN>0.006&&ones/NN<0.009,`halfling dis-mode nat-1 rate ≈0.73% (one reroll only): ${(ones/NN*100).toFixed(3)}%`);
+  // grid corners: diagonals can't cross a tree/wall corner (tree at (5,3))
+  const sg=C.newCombat(C.buildCharacter("fighter","human","T"),"prepared");
+  sg.pos.hero={x:4,y:3};
+  const r1=C.bfsReach(sg,{x:4,y:3},1,"hero");
+  ok(!r1.has(C.key(5,2)),"diagonal past tree corner is blocked for movement");
+  ok(r1.has(C.key(4,2))&&r1.has(C.key(3,2)),"orthogonal and clear diagonals still open");
+  ok(C.bfsField(5,2).get(C.key(4,3))===2,"pathing field respects the corner rule");
+  // Goblin Warrior advantage rider: +1d4 when the attack roll had Advantage (ambush round 1)
+  C.RNG.seed(90210);
+  function maxNonCrit(opener,n){
+    let mx=0;
+    for(let i=0;i<n;i++){
+      const st=C.newCombat(C.buildCharacter("fighter","human","T"),opener);
+      st.foes[1]=C.makeFoe("archer",st.foes[1].x,st.foes[1].y); // swap in a Warrior to sample its rider
+      st.hero.hp=100;st.hero.maxHp=100;
+      C.goblinPhase(st).forEach(e=>{if(e.t==="foehit"&&e.i===1&&!e.atk.crit&&e.dmg>mx)mx=e.dmg});
+    }
+    return mx;
+  }
+  const mxAmbushArcher=maxNonCrit("ambushed",4000);
+  const mxPreparedArcher=maxNonCrit("prepared",4000);
+  ok(mxAmbushArcher>8,`Warrior with Advantage can exceed 1d6+2 (saw ${mxAmbushArcher})`);
+  ok(mxPreparedArcher<=8,`Warrior without Advantage caps at 1d6+2 (saw ${mxPreparedArcher})`);
 }
 
 /* ---------- 4. scene graph ---------- */
@@ -248,7 +336,7 @@ for(const cls of Object.keys(C.CLASSES)){
     "| naive(even)",(nEven*100).toFixed(1)+"%");
   ok(sEdge>=0.70,`${cls}: smart with scene edges wins >=70% (${(sEdge*100).toFixed(1)}%)`);
   ok(sEven>=nEven-0.02,`${cls}: smart >= naive on even footing`);
-  ok(sAmb<sEdge,`${cls}: scene failure genuinely hurts`);
+  ok(sEdge-sAmb>=0.05,`${cls}: ambush costs >=5 pts (${((sEdge-sAmb)*100).toFixed(1)})`);
   ok(sEdge<=0.96,`${cls}: not a guaranteed win (${(sEdge*100).toFixed(1)}%)`);
 }
 {
