@@ -106,8 +106,8 @@ h1,h2{font-family:var(--serif);font-weight:600}
 .token.gone{opacity:0;transform:translate(-50%,-50%) scale(.3)}
 
 /* Foe chips (targets) */
-#foechips{display:flex;gap:8px;padding:7px 0 2px}
-.fchip{flex:1;text-align:center;padding:7px 6px;border-radius:10px;min-height:0}
+#foechips{display:flex;flex-wrap:wrap;gap:8px;padding:7px 0 2px}
+.fchip{flex:1 1 30%;min-width:140px;text-align:center;padding:7px 6px;border-radius:10px;min-height:0}
 .fchip .fn{font-family:var(--serif);font-size:13.5px;color:var(--parch)}
 .fchip .fhp{display:flex;gap:2px;justify-content:center;margin-top:4px}
 .fchip .pip{width:8px;height:8px;border-radius:2px;background:var(--bad)}
@@ -451,7 +451,7 @@ const SCENES={
     approach:{dm:["The waystation door hangs off one hinge. Lantern light spills through the gap, and with it two crooked shadows.",
       "The GM sets two red tokens on the map and reaches for the dice. \u201cHere we go.\u201d"],combat:true,
       winRecruit:"camp_r",winSolo:"camp_s"},
-    camp_r:{pos:[6,4],rest:true,next:"warband_r",dm:[
+    camp_r:{pos:[6,4],rest:true,nameRecruit:true,next:"warband_r",dm:[
       "The goblin trails you to the waystation porch at a wary distance, then squats by your fire like it has always owned a place at it. It splints its own arm, watching you the whole time.",
       "\u201cSo,\u201d the GM says, delighted, sliding a green token next to yours. \u201cYou have a companion. Take a breather \u2014 roll a Hit Die to patch up.\u201d"]},
     camp_s:{pos:[6,4],rest:true,next:"warband_s",dm:[
@@ -1155,6 +1155,39 @@ function sysSay(box,html){
   const p=document.createElement("p");p.className="sysline";p.innerHTML=html;
   box.appendChild(p);logNudge(p);
 }
+function contBtn(label,fn){
+  const b=document.createElement("button");
+  b.className="primary cont";b.textContent=label;
+  b.addEventListener("click",function(){$("choices").innerHTML="";fn()});
+  $("choices").appendChild(b);logNudge(b);
+}
+// Naming the recruit — always offered on recruitment (Casim, playtest 2026-07-28).
+// The list is placeholder flavor; recruit naming remains Casim's fork.
+const GOBLIN_NAMES=["Snag","Krik","Nib","Bogget","Weech","Mux","Skiv","Toadpepper","Grubbin","Yip"];
+function renderRecruitNaming(n){
+  const a=G.party[0];
+  const wrap=document.createElement("div");wrap.className="namebox";
+  const inp=document.createElement("input");
+  inp.id="recruit-name";inp.type="text";inp.maxLength=14;inp.autocomplete="off";
+  inp.placeholder="Name your companion";
+  const rnd=document.createElement("button");rnd.textContent="🎲";rnd.className="ghost";
+  rnd.style.minWidth="52px";rnd.style.textAlign="center";
+  rnd.addEventListener("click",function(){inp.value=GOBLIN_NAMES[Math.floor(Math.random()*GOBLIN_NAMES.length)]});
+  wrap.appendChild(inp);wrap.appendChild(rnd);
+  $("choices").appendChild(wrap);
+  const done=document.createElement("button");
+  done.className="primary cont";done.id="btn-name-recruit";
+  done.textContent="Name it, then rest — roll a Hit Die";
+  done.addEventListener("click",function(){
+    const nm=inp.value.trim()||GOBLIN_NAMES[Math.floor(Math.random()*GOBLIN_NAMES.length)];
+    a.name=nm;
+    $("choices").innerHTML="";
+    youSay("“"+nm+",” you decide. It blinks, then nods once.");
+    setTimeout(function(){openCampRest(n)},500);
+  });
+  $("choices").appendChild(done);
+  logNudge(done);
+}
 function startScene(){
   show("sc-scene");$("log").innerHTML="";buildGrid();
   enterNode(SCENES.start);
@@ -1170,9 +1203,19 @@ function enterNode(id){
       const dmg=d(n.dmg[1]);G.ch.hp=Math.max(1,G.ch.hp-dmg);G.stats.dmgTaken+=dmg;
       sysSay($("log"),"The needle costs you <b class='result-bad'>"+dmg+" HP</b> ("+G.ch.hp+"/"+G.ch.maxHp+" left).");
     }
-    if(n.rest){setTimeout(function(){openCampRest(n)},700);return}
-    if(n.combat){if(n.stage2)G.stage=2;setTimeout(function(){startCombat(n.opener)},700);return}
-    if(n.next){setTimeout(function(){enterNode(n.next)},450);return}
+    // the reader sets the pace: every transition waits for a tap (playtest 2026-07-28)
+    if(n.rest){
+      if(n.nameRecruit&&G.party&&G.party.length){renderRecruitNaming(n)}
+      else contBtn("Take a short rest — roll a Hit Die",function(){openCampRest(n)});
+      return;
+    }
+    if(n.combat){
+      contBtn(n.stage2?"Stand up — steel out":"Continue",function(){
+        if(n.stage2)G.stage=2;startCombat(n.opener);
+      });
+      return;
+    }
+    if(n.next){contBtn("Continue",function(){enterNode(n.next)});return}
     n.choices.forEach(function(c){
       const b=document.createElement("button");
       let inner=c.label;
@@ -1364,8 +1407,12 @@ function renderChrome(){
     const b=document.createElement("button");
     b.className="fchip ally"+(a.hp<=0?" dead":"");
     let pips="";for(let p=0;p<a.maxHp;p++)pips+='<span class="pip'+(p<a.hp?"":" off")+'"></span>';
-    b.innerHTML='<div class="fn">'+a.name+' <span style="color:var(--ok)">(ally)</span></div><div class="fhp">'+pips+'</div>'
-      +'<div class="rng">'+(a.hp<=0?"down — back after a rest":STANCE_LABEL[a.stance]+" · tap for orders")+'</div>';
+    let stanceTxt=STANCE_LABEL[a.stance];
+    if(a.stance==="focus")
+      stanceTxt+=" — "+(s.heroTarget!==null&&s.foes[s.heroTarget]&&s.foes[s.heroTarget].hp>0
+        ?"the "+s.foes[s.heroTarget].name:"next one you strike");
+    b.innerHTML='<div class="fn">'+esc(a.name)+' <span style="color:var(--ok)">(ally)</span></div><div class="fhp">'+pips+'</div>'
+      +'<div class="rng">'+(a.hp<=0?"down — back after a rest":stanceTxt+" · tap for orders")+'</div>';
     b.addEventListener("click",function(){
       if(a.hp<=0||!G.combat||G.combat.over)return;
       a.stance=STANCES[(STANCES.indexOf(a.stance)+1)%STANCES.length];
@@ -1689,9 +1736,17 @@ function endCombat(){
     const node=s.recruited?(SCENES.nodes.approach.winRecruit):(SCENES.nodes.approach.winSolo);
     if(s.recruited){G.party=[s.recruited];G.stats.recruited=true}
     if(s.heroDown&&s.won)G.stats.rescued=true;
-    G.combat=null;
-    show("sc-scene");
-    setTimeout(function(){enterNode(node)},400);
+    // let the last log lines land before leaving the fight (reader-paced)
+    $("bonusrow").innerHTML="";$("actions").innerHTML="";
+    const b=document.createElement("button");
+    b.className="primary cont";b.style.gridColumn="1 / -1";b.textContent="Continue";
+    b.addEventListener("click",function(){
+      if(!G.combat)return;              // double-tap guard: fire the transition once
+      $("actions").innerHTML="";
+      G.combat=null;show("sc-scene");
+      setTimeout(function(){enterNode(node)},250);
+    });
+    $("actions").appendChild(b);
     return;
   }
   if(s.heroDown&&won)G.stats.rescued=true;

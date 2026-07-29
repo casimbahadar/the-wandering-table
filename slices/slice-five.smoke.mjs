@@ -27,6 +27,24 @@ async function driveOverlay(){
   }
   await waitFor(()=>!doc.getElementById("roll").classList.contains("on"),"overlay closes");
 }
+// step through reader-paced transitions: Continue buttons, roll overlays, recruit naming
+async function advance(fn,label,ms=40000){
+  const t0=Date.now();
+  while(Date.now()-t0<ms){
+    if(fn())return true;
+    if(doc.getElementById("roll").classList.contains("on")){await driveOverlay();continue}
+    const nameBtn=doc.getElementById("btn-name-recruit");
+    if(nameBtn){
+      const inp=doc.getElementById("recruit-name");if(inp)inp.value="Grib";
+      click(nameBtn);await sleep(150);continue;
+    }
+    // only tap buttons the player could actually see (scene choices, or combat actions while in combat)
+    const cont=doc.querySelector(on("sc-combat")?"#actions button.cont":"#choices button.cont");
+    if(cont&&!cont.disabled){click(cont);await sleep(150);continue}
+    await sleep(80);
+  }
+  fail++;console.error("  SMOKE FAIL: timeout advancing to",label);return false;
+}
 async function playCombatOut(S,maxTurns){
   for(let t=0;t<maxTurns&&S.G.combat&&!S.G.combat.over;t++){
     await waitFor(()=>S.G.phase!=="anim"&&(!S.G.combat||S.G.combat.over||!S.G.combat.acted),"turn ready");
@@ -117,11 +135,11 @@ const run=async()=>{
   await driveOverlay();
   const knownAfter=S.G.flags.known;
 
-  // satchel → leave it → combat
-  await waitFor(()=>doc.querySelectorAll("#choices button").length===2,"satchel choices");
+  // satchel → leave it → combat (Continue taps pace every hop now)
+  await advance(()=>doc.querySelectorAll("#choices button:not(.cont)").length===2,"satchel choices");
   if(knownAfter)ok(doc.getElementById("tk-f0"),"scouted goblins visible on exploration map");
   click(doc.querySelectorAll("#choices button")[1]);
-  await waitFor(()=>on("sc-combat"),"combat reached");
+  await advance(()=>on("sc-combat"),"combat reached");
   ok(doc.getElementById("map-slot-combat").contains(doc.getElementById("map")),"same map carried into combat");
   ok(doc.querySelectorAll(".fchip").length===2,"two foe chips");
   ok(doc.getElementById("tk-f0")&&doc.getElementById("tk-f1"),"both goblin tokens placed");
@@ -139,14 +157,12 @@ const run=async()=>{
   S.G.combat.hero.hp=S.G.combat.hero.maxHp=80;
   S.G.combat.hero.stats.cha=30;
   await playCombatOut(S,30);
-  // fight 1 won -> camp (short rest overlay), then the stage-2 fight
-  await waitFor(()=>on("sc-scene")&&doc.getElementById("roll").classList.contains("on"),"camp short-rest overlay",40000);
-  const recruited=!!(S.G.party&&S.G.party.length);
-  click(doc.getElementById("roll-btn"));                       // roll the Hit Die
-  await waitFor(()=>!doc.getElementById("roll").classList.contains("on"),"short rest resolves");
-  await waitFor(()=>on("sc-combat"),"stage-2 combat reached",40000);
+  // fight 1 won -> Continue -> camp (naming if recruited, Hit-Die rest) -> stage-2 fight
+  await advance(()=>on("sc-combat")&&S.G.stage===2,"stage-2 combat after camp",60000);
   ok(S.G.stage===2,"stage 2 entered after camp");
+  const recruited=!!(S.G.party&&S.G.party.length);
   if(recruited){
+    ok(S.G.party[0].name==="Grib","recruit named at recruitment (always offered)");
     ok(sawSpareBtn,"spare button appeared and was used");
     await waitFor(()=>doc.querySelector(".fchip.ally"),"ally chip rendered");
     const ally=S.G.combat.allies[0];
@@ -172,9 +188,9 @@ const run=async()=>{
   click(doc.querySelectorAll("#choices button")[0]);       // Stealth
   await waitFor(()=>doc.getElementById("roll").classList.contains("on"),"check overlay (run 2)");
   await driveOverlay();
-  await waitFor(()=>doc.querySelectorAll("#choices button").length===2,"satchel (run 2)");
+  await advance(()=>doc.querySelectorAll("#choices button:not(.cont)").length===2,"satchel (run 2)");
   click(doc.querySelectorAll("#choices button")[1]);
-  await waitFor(()=>on("sc-combat"),"combat (run 2)");
+  await advance(()=>on("sc-combat"),"combat (run 2)");
   await waitFor(()=>S.G.phase!=="anim","opening events done");
   if(S.G.combat&&!S.G.combat.over){
     S.G.combat.hero.hp=1;
