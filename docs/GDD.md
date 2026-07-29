@@ -67,9 +67,9 @@ Free "D&D app" space = companion tools (character sheets, bestiaries, dice rolle
 | Rogue Aimed Strike (adv + 1d6, 2 uses) | in | recorded stand-in for Sneak Attack (1d6 matches; SRD version is at-will but conditional on adv/ally) |
 | Species traits | in (s4 fix) | Dwarf +1 HP/level (was +2 flat); Elf = Perception proficiency (was advantage); Halfling Luck rerolls one die of an adv/dis pair; Human = Heroic-Inspiration-shaped reroll (flag: RAW rerolls any die) |
 | Ability arrays (primary 16) | in | flagged: near-standard-array + "2024-style background bonus"; exact array+background arithmetic doesn't reproduce all six values — Casim's call at v1 |
-| Line of sight (Bresenham, trees/walls block) | in | reasonable approximation of cover; real cover AC bonuses deferred |
+| Line of sight (Bresenham, trees/walls block) | in | terrain = total cover (blocks the shot); creature Half Cover (+2 AC, SRD verbatim) implemented in s5 — three-quarters/terrain-partial cover still deferred |
 | Initiative | replaced | openers set order/advantage by scene outcome (recorded design; goblin Initiative +2 unused) |
-| Dash, Hide, difficult terrain, opportunity-attack reactions per-round tracking | deferred | v1 items |
+| Dash, Hide, difficult terrain, three-quarters/terrain-partial cover, opportunity-attack reactions per-round tracking | deferred | v1 items |
 
 **Monster fidelity — SRD-faithful as of slice four (solo-tune retired):**
 
@@ -93,6 +93,21 @@ Balance now comes from the SRD encounter budget, not stat edits: solo level-1 he
 | Cleric | 72.3% | 71.2% | 62.6% | 47.9% |
 
 Harness assertions: smart-with-edges ≥70% and ≤96%; ambush costs ≥5 pts (hard assertion); smart ≥ naive; class spread ≤25 pts (18.8); defend-only and flee-only strategies provably fail (no stalemate, no kiting). **Wizard-strongest flag RESOLVED 2026-07-28:** Mage Armor now costs a slot (1 Magic Missile cast) — wizard drops from strongest everywhere (92.9 edge) into the pack (84.8, third of four). Remaining watch items: cleric (72.3) and wizard-even (72.5) sit near the band floor — confirm feel in playtest. Slice-3 numbers (pre-fidelity) retained in git history for comparison.
+
+## Recruitment slice (slice 5, 3000 runs/cell, harness-enforced, 2026-07-28)
+
+Implements RECRUITMENT-SPEC step 1 on The Lantern Road: spare-the-goblin (battle_spare trigger, Persuasion DC 12 with advantage from respects:strength, hand-rolled), seat abstraction (hero + recruit; foes fight the nearest seat), four Guided stances (tap the ally chip to cycle), downed-never-dead recruits, hero-downed-fight-continues with rescue at 1 HP, camp short rest between fights (manual Hit Die; Second Wind regains a use, Arcane Recovery returns the wizard slot — both SRD), and seat-scaled stage-2 encounters.
+
+| Class | fight 1 edges | warband (recruit, 75 XP) | reprisal (solo, 50 XP) | full arc | spare lands | rescues seen |
+|---|---|---|---|---|---|---|
+| Fighter | 89.7% | 93.6% | 89.9% | 82.5% | 71% | 2 |
+| Rogue | 91.2% | 91.5% | 91.4% | 67.9% | 65% | 13 |
+| Wizard | 85.5% | 86.6% | 88.3% | 73.5% | 69% | 0 |
+| Cleric | 73.4% | 85.3% | 83.5% | 58.7% | 77% | 24 |
+
+New assertions: stage-2 fights in 65–97 per class; full arc in 55–93; spare check lands 45–85%; recruit path within 5 pts of solo path ("recruiting is not a trap"); hero-downed rescue fires in play; defend-spam + Hold ally fails; defend-spam + Skirmish ally stays ~half the played win rate (dodge-tanking beside your recruit is teamwork, not a stalemate).
+
+**Budget finding (recorded for the spec):** a CR 1/8 minion recruit seat weighs about HALF a character in encounter math — warband at a full 2-seat Low budget (100 XP) cratered win rates to 48–75%; at 75 XP it lands in band. Recruit seats count at half weight until growth tracks raise them.
 
 ## Encounter design principles (from playtest)
 

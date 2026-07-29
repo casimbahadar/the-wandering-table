@@ -4,7 +4,7 @@
 Premium buy-once mobile game recreating tabletop-at-a-table 5e-compatible play: GM voice, hand-rolled dice, real SRD 5.2 rules, persistent tactical map. Two modes on one rules engine: authored Campaign (product spine) + Dice Dungeon roguelite. No microtransactions ever.
 
 ## Current state (2026-07-28)
-Repo seeded; slice-four is current — the SRD 5.2 deep-fidelity artifact (verified: harness 124/0 at 3000 runs/cell, smoke 22/0). SRD-faithful statblocks + rules; encounter = two Goblin Minions (50 XP Low budget); hero solo-tune removed. Slices 1–3 frozen as pre-fidelity playtest artifacts. The SRD 5.2 PDF is committed at repo root — it is the sole rules source of truth; never cite memory or wikis. Casim playtest of slice-four pending. Next milestones (see docs/GDD.md production plan): campaign architecture spec → recruitment spec → Campaign 1 Act 1.
+Slice-five is current — the recruitment slice (verified: harness 180/0 at 3000 runs/cell, smoke 28/0): spare-the-goblin, seat abstraction (hero + recruit), stances, hero-downed-fight-continues, camp short rest, seat-scaled two-fight arc on The Lantern Road. Slice-four (SRD fidelity artifact, playtest-approved, merged) and slices 1–3 are frozen. The SRD 5.2 PDF is committed at repo root — sole rules source of truth; never cite memory or wikis. Casim playtest of slice-five pending. Next milestones: campaign architecture spec → recruitment steps 2–4 (Bond/growth, second trigger type) → Campaign 1 Act 1.
 
 ## Tech stack & architecture
 - Slices 1–3: single-file HTML, zero dependencies, raw Web Audio, mobile-first ~480px (historical artifacts — keep as-is).
