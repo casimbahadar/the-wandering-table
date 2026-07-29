@@ -67,9 +67,9 @@ Free "D&D app" space = companion tools (character sheets, bestiaries, dice rolle
 | Rogue Aimed Strike (adv + 1d6, 2 uses) | in | recorded stand-in for Sneak Attack (1d6 matches; SRD version is at-will but conditional on adv/ally) |
 | Species traits | in (s4 fix) | Dwarf +1 HP/level (was +2 flat); Elf = Perception proficiency (was advantage); Halfling Luck rerolls one die of an adv/dis pair; Human = Heroic-Inspiration-shaped reroll (flag: RAW rerolls any die) |
 | Ability arrays (primary 16) | in | flagged: near-standard-array + "2024-style background bonus"; exact array+background arithmetic doesn't reproduce all six values — Casim's call at v1 |
-| Line of sight (Bresenham, trees/walls block) | in | reasonable approximation of cover; real cover AC bonuses deferred |
+| Line of sight (Bresenham, trees/walls block) | in | terrain = total cover (blocks the shot); creature Half Cover (+2 AC, SRD verbatim) implemented in s5 — three-quarters/terrain-partial cover still deferred |
 | Initiative | replaced | openers set order/advantage by scene outcome (recorded design; goblin Initiative +2 unused) |
-| Dash, Hide, difficult terrain, opportunity-attack reactions per-round tracking | deferred | v1 items |
+| Dash, Hide, difficult terrain, three-quarters/terrain-partial cover, opportunity-attack reactions per-round tracking | deferred | v1 items |
 
 **Monster fidelity — SRD-faithful as of slice four (solo-tune retired):**
 
