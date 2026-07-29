@@ -205,6 +205,35 @@ for(const cls of Object.keys(C.CLASSES))for(const sp of Object.keys(C.SPECIES)){
   ok(mxPreparedArcher<=8,`Warrior without Advantage caps at 1d6+2 (saw ${mxPreparedArcher})`);
 }
 
+/* ---------- 3b2. creature Half Cover (SRD 5.2: another creature between attacker and target = +2 AC) ---------- */
+{
+  const ch=C.buildCharacter("wizard","human","T");
+  const s=C.newCombat(ch,"prepared");
+  // line up on row 4: hero (3,4) — stab (4,4) — skirm (5,4)
+  s.foes[0].x=4;s.foes[0].y=4;
+  s.foes[1].x=5;s.foes[1].y=4;
+  const ev=[];
+  C.foeAttack(s,s.foes[1],1,ev,true);                    // slinger throws at the hero THROUGH its buddy
+  ok(ev[0].atk.cover===2&&ev[0].atk.ac===ch.ac+2,"foe ranged attack through its buddy: target gets +2 AC half cover");
+  const ev2=C.resolveHeroAttack(s,1,{value:10,rolls:[10],mode:"normal"},false); // Fire Bolt back through the same body
+  ok(ev2[0].atk.cover===2&&ev2[0].atk.ac===s.foes[1].ac+2,"hero ranged attack through a creature: foe gets +2 AC");
+  // melee never has an intermediate tile — no cover
+  const s2=C.newCombat(C.buildCharacter("fighter","human","T"),"prepared");
+  s2.foes[0].x=3;s2.foes[0].y=3;
+  const ev3=C.resolveHeroAttack(s2,0,{value:10,rolls:[10],mode:"normal"},false);
+  ok(ev3[0].atk.cover===0,"melee attacks take no creature cover");
+  // clear lane: no cover
+  const s3=C.newCombat(C.buildCharacter("wizard","human","T"),"prepared");
+  s3.foes[0].hp=0;s3.foes[1].x=5;s3.foes[1].y=4;
+  const ev4=C.resolveHeroAttack(s3,1,{value:10,rolls:[10],mode:"normal"},false);
+  ok(ev4[0].atk.cover===0,"clear lane: no cover bonus");
+  // nat 20 still hits regardless of cover (SRD: hits regardless of AC)
+  const s4=C.newCombat(C.buildCharacter("wizard","human","T"),"prepared");
+  s4.foes[0].x=4;s4.foes[0].y=4;s4.foes[1].x=5;s4.foes[1].y=4;
+  const ev5=C.resolveHeroAttack(s4,1,{value:20,rolls:[20],mode:"normal"},false);
+  ok(ev5[0].atk.hit&&ev5[0].atk.crit,"natural 20 hits through half cover");
+}
+
 /* ---------- 3c. recruitment: spare trigger, seats, stances, downed rules, short rest ---------- */
 {
   C.RNG.seed(4242);

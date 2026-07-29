@@ -371,6 +371,20 @@ function los(x0,y0,x1,y1){
   }
   return true;
 }
+// SRD 5.2: another creature between attacker and target grants Half Cover (+2 AC).
+// Walks the same line as los(); any living unit on an intermediate tile counts.
+// (No stray-shot-hits-the-blocker rule exists in SRD 5.2 — flagged as a possible house rule.)
+function creatureCover(s,x0,y0,x1,y1){
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,err=dx-dy,x=x0,y=y0;
+  while(!(x===x1&&y===y1)){
+    const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx}
+    if(e2<dx){err+=dx;y+=sy}
+    if(x===x1&&y===y1)break;
+    if(unitAt(s,x,y)!==null)return 2;
+  }
+  return 0;
+}
 const DIRS=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
 // SRD 5.2 grid rule: diagonal movement can't cross the corner of a wall/tree
 function cutsCorner(x,y,dx,dy){
@@ -573,7 +587,10 @@ function attackOptions(s){
     const dist=cheb(h,f);
     if(w.range<=1)return{i:i,ok:dist<=1,why:dist<=1?"in reach":"out of reach",dist:dist};
     const sight=los(h.x,h.y,f.x,f.y);
-    const why=!sight?"no line of sight":(anyFoeAdjacent(s)?"clear shot \u2014 disadvantage, blade in your face":"clear shot");
+    const cov=sight?creatureCover(s,h.x,h.y,f.x,f.y):0;
+    const why=!sight?"no line of sight"
+      :(anyFoeAdjacent(s)?"clear shot \u2014 disadvantage, blade in your face"
+      :(cov?"a shot \u2014 but someone's in the way (+2 AC)":"clear shot"));
     return{i:i,ok:sight,why:why,dist:dist};
   });
 }
@@ -582,10 +599,11 @@ function heroAttackMode(s,aimed){
   const dis=s.hero.weapon.range>1&&anyFoeAdjacent(s); // an enemy in your face spoils ranged attacks
   return(adv&&!dis)?"adv":((dis&&!adv)?"dis":"normal");
 }
-function attackResult(roll,bonus,targetAc){
+function attackResult(roll,bonus,targetAc,cover){
+  const ac=targetAc+(cover||0);           // Half Cover: +2 AC (SRD 5.2); nat 20 still hits regardless
   const crit=roll.value===20,fumble=roll.value===1;
-  const hit=!fumble&&(crit||roll.value+bonus>=targetAc);
-  return{roll:roll,bonus:bonus,total:roll.value+bonus,ac:targetAc,hit:hit,crit:crit,fumble:fumble};
+  const hit=!fumble&&(crit||roll.value+bonus>=ac);
+  return{roll:roll,bonus:bonus,total:roll.value+bonus,ac:ac,cover:cover||0,hit:hit,crit:crit,fumble:fumble};
 }
 // the hero's damage roll — its own dice, doubled on a crit (Aimed Strike adds 1d6)
 function rollHeroDamage(ch,crit,extraDie){
@@ -601,7 +619,8 @@ function resolveHeroAttack(s,targetIdx,roll,aimed){
   s.firstAttackAdv=false;s.heroTarget=targetIdx;
   if(aimed)ch.action2Uses--;
   const bonus=mod(ch.stats[ch.weapon.ability])+ch.prof;
-  const atk=attackResult(roll,bonus,f.ac);
+  const cover=ch.weapon.range>1?creatureCover(s,s.pos.hero.x,s.pos.hero.y,f.x,f.y):0;
+  const atk=attackResult(roll,bonus,f.ac,cover);
   s.acted=true;
   if(atk.hit)ev.push({t:"heroattack",i:targetIdx,foe:f.name,aimed:aimed,atk:atk});
   else ev.push({t:"heromiss",i:targetIdx,foe:f.name,aimed:aimed,atk:atk});
@@ -716,7 +735,8 @@ function foeAttack(s,f,i,ev,ranged,oa,tgt){
   if(s.ambushAdv&&s.round===1)adv=true;          // caught flat-footed
   const mode=(adv&&!dis)?"adv":((dis&&!adv)?"dis":"normal");
   const roll=rollD20(null,mode);
-  const atk=attackResult(roll,f.atk,unit.ac);
+  const cover=ranged?creatureCover(s,f.x,f.y,tpos.x,tpos.y):0;
+  const atk=attackResult(roll,f.atk,unit.ac,cover);
   if(atk.hit){
     let dmg=d(f.dmgDie)+(atk.crit?d(f.dmgDie):0)+f.dmgMod;
     if(f.advRider&&mode==="adv")dmg+=d(4)+(atk.crit?d(4):0);
@@ -800,7 +820,8 @@ function allyAttack(s,a,ai,fi,ev,ranged){
   if(ranged&&s.foes.some(function(x){return x.hp>0&&cheb(a,x)<=1}))dis=true; // enemy in the ally's face
   if(ranged&&cheb(a,f)>(a.rngN||1))dis=true;                                 // beyond normal range
   const roll=rollD20(null,dis?"dis":"normal");
-  const atk=attackResult(roll,a.atk,f.ac);
+  const cover=ranged?creatureCover(s,a.x,a.y,f.x,f.y):0;
+  const atk=attackResult(roll,a.atk,f.ac,cover);
   if(atk.hit){
     const dmg=d(a.dmgDie)+(atk.crit?d(a.dmgDie):0)+a.dmgMod;
     f.hp=Math.max(0,f.hp-dmg);
@@ -1312,8 +1333,14 @@ function doCheckRoll(c){
     else parts.push("d20 \u2192 "+res.roll.value);
     if(res.roll.lucky)parts.push("Lucky rerolled a 1!");
     parts.push((res.bonus>=0?"+":"")+res.bonus+" "+skillName(c.skill));
+    // table flavour for the big rolls (checks stay numeric \u2014 SRD scopes auto-success to attack rolls)
+    let flourish="";
+    if(res.roll.value===20){flourish="<br><b class='ok'>Natural 20!</b> <em>The whole table leans back. The GM just nods slowly.</em>";
+      sysSay($("log"),"<b class='result-ok'>Natural 20</b> \u2014 the table will be telling this one later.")}
+    else if(res.roll.value===1){flourish="<br><b class='bad'>Natural 1.</b> <em>Someone at the table sucks air through their teeth.</em>";
+      sysSay($("log"),"<b class='result-bad'>Natural 1</b> \u2014 the GM writes something down, smiling.")}
     $("roll-math").innerHTML=parts.join(" &middot; ")
-      +"<br><b class='"+(res.success?"ok":"bad")+"'>"+res.total+" vs DC "+res.dc+" \u2014 "+(res.success?"Success":"Failure")+"</b>";
+      +"<br><b class='"+(res.success?"ok":"bad")+"'>"+res.total+" vs DC "+res.dc+" \u2014 "+(res.success?"Success":"Failure")+"</b>"+flourish;
     sndLand(res.success);
     if(!res.success&&G.ch.inspiration){
       $("roll-btn").disabled=false;$("roll-btn").textContent="Use Heroic Inspiration \u2014 reroll";
@@ -1587,8 +1614,9 @@ function beginHeroAttack(targetIdx,aimed){
   const f=s.foes[targetIdx];
   const mode=heroAttackMode(s,aimed);
   const bonus=mod(s.hero.stats[s.hero.weapon.ability])+s.hero.prof;
+  const cov=s.hero.weapon.range>1?creatureCover(s,s.pos.hero.x,s.pos.hero.y,f.x,f.y):0;
   openRoll({
-    why:"\u201c"+s.hero.weapon.name+" at the "+f.name+" \u2014 AC "+f.ac+". Roll to hit.\u201d",
+    why:"\u201c"+s.hero.weapon.name+" at the "+f.name+" \u2014 AC "+f.ac+(cov?"+2, someone's in the way (half cover)":"")+". Roll to hit.\u201d",
     aux:(mode==="adv"?"Advantage: roll twice, keep the higher. ":mode==="dis"?"Disadvantage \u2014 they're in your face: roll twice, keep the lower. ":"")+"Your bonus +"+bonus,
     onRoll:function(){
       $("roll-btn").disabled=true;
@@ -1650,12 +1678,14 @@ function beginSpare(){
         const e=ev[0];
         const l1=(roll.mode!=="normal"?"rolled "+roll.rolls.join(" & ")+", kept "+roll.value:"d20 → "+roll.value)
           +" · "+(bonus>=0?"+":"")+bonus+" "+skillName(trig.check.skill);
+        const flour=roll.value===20?"<br><b class='ok'>Natural 20!</b> <em>The table erupts. The GM slow-claps.</em>"
+          :(roll.value===1?"<br><b class='bad'>Natural 1.</b> <em>The GM covers their mouth with the folder.</em>":"");
         if(e.t==="spared"){
           G.stats.checksPassed++;
-          $("roll-math").innerHTML=l1+"<br><b class='ok'>"+e.total+" vs DC "+e.dc+" — it lowers the knife.</b>";
+          $("roll-math").innerHTML=l1+"<br><b class='ok'>"+e.total+" vs DC "+e.dc+" — it lowers the knife.</b>"+flour;
           sndLand(true);
         }else{
-          $("roll-math").innerHTML=l1+"<br><b class='bad'>"+e.total+" vs DC "+e.dc+" — it spits and squares up.</b>";
+          $("roll-math").innerHTML=l1+"<br><b class='bad'>"+e.total+" vs DC "+e.dc+" — it spits and squares up.</b>"+flour;
           sndLand(false);
         }
         setTimeout(function(){closeRoll();playEvents(ev,afterHeroAction)},900);
@@ -1736,12 +1766,12 @@ function playEvents(ev,done){
 function foeMath(a,vsAlly){
   let s="d20\u2192"+a.roll.value;
   if(a.roll.mode!=="normal")s="d20\u00d72\u2192["+a.roll.rolls.join(",")+"] keep "+a.roll.value;
-  return s+" +"+a.bonus+" = "+a.total+" vs "+(vsAlly?"its":"your")+" AC "+a.ac;
+  return s+" +"+a.bonus+" = "+a.total+" vs "+(vsAlly?"its":"your")+" AC "+a.ac+(a.cover?" (incl. +2 half cover)":"");
 }
 function allyMath(a){
   let s="d20\u2192"+a.roll.value;
   if(a.roll.mode!=="normal")s="d20\u00d72\u2192["+a.roll.rolls.join(",")+"] keep "+a.roll.value;
-  return s+" +"+a.bonus+" = "+a.total+" vs AC "+a.ac;
+  return s+" +"+a.bonus+" = "+a.total+" vs AC "+a.ac+(a.cover?" (incl. +2 half cover)":"");
 }
 function endCombat(){
   if(!G.combat)return;
