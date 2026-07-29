@@ -451,7 +451,15 @@ const SCENES={
       "Whatever it held soaks uselessly into the ditch."],dmg:[1,4],next:"approach"},
     approach:{dm:["The waystation door hangs off one hinge. Lantern light spills through the gap, and with it two crooked shadows.",
       "The GM sets two red tokens on the map and reaches for the dice. \u201cHere we go.\u201d"],combat:true,
-      winRecruit:"camp_r",winSolo:"camp_s"},
+      winRecruit:"aftermath_r",winSolo:"aftermath_s"},
+    aftermath_r:{pos:[4,2],next:"camp_r",dm:[
+      "It's over. The waystation yard is quiet except for the lantern creaking overhead and your own breathing coming back down.",
+      "The goblin you spared hasn't run. It crouches over its fallen kin for a long moment — then rifles their pockets, matter-of-fact, and looks up at you as if to ask what's taking so long.",
+      "The GM smiles and slides the map toward the treeline. “Well then. You'd better make camp.”"]},
+    aftermath_s:{pos:[4,2],next:"camp_s",dm:[
+      "It's over. The waystation yard is quiet except for the lantern creaking overhead and your own breathing coming back down.",
+      "Two toll-takers who won't be collecting again. The road behind you stays empty; the woods ahead do not feel it.",
+      "The GM slides the map toward the treeline. “You'd better make camp while you can.”"]},
     camp_r:{pos:[6,4],rest:true,nameRecruit:true,next:"warband_r",dm:[
       "The goblin trails you to the waystation porch at a wary distance, then squats by your fire like it has always owned a place at it. It splints its own arm, watching you the whole time.",
       "\u201cSo,\u201d the GM says, delighted, sliding a green token next to yours. \u201cYou have a companion. Take a breather \u2014 roll a Hit Die to patch up.\u201d"]},
