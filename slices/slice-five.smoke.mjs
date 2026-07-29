@@ -172,7 +172,7 @@ const run=async()=>{
     ok(doc.getElementById("tk-a0"),"ally token on the map");
   }
   await playCombatOut(S,40);
-  await waitFor(()=>on("sc-recap"),"recap after the stage-2 fight",60000);
+  await advance(()=>on("sc-recap"),"recap after the stage-2 fight",60000);
   ok(S.G.combat.won===true,"campaign arc won");
   if(recruited)ok(S.G.stats.recruited===true,"recruit recorded in the session stats");
   ok(sawDamageStage,"manual damage-roll stage appeared after a hit");
@@ -197,7 +197,7 @@ const run=async()=>{
     S.G.combat.foes.forEach(f=>{if(f.hp>0){f.hp=f.maxHp=60;f.atk=20;f.dmgMod=10}});
     await playCombatOut(S,15);
   }
-  await waitFor(()=>on("sc-recap"),"recap after defeat",40000);
+  await advance(()=>on("sc-recap"),"recap after defeat",40000);
   ok(S.G.combat.won===false,"combat lost");
   ok(doc.getElementById("recap-title").textContent.includes("Dragged"),"defeat recap text");
 

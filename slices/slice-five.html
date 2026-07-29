@@ -167,7 +167,7 @@ h1,h2{font-family:var(--serif);font-weight:600}
 #bonusrow button{flex:1;text-align:center;font-size:12.5px;min-height:38px;padding:7px}
 #actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:6px}
 #actions button{text-align:center;font-size:13.5px;padding:9px 6px}
-#actions button .u{display:block;font-size:10.5px;color:var(--mut);font-weight:400}
+#actions button .u,#sparerow button .u{display:block;font-size:10.5px;color:var(--mut);font-weight:400}
 #actions button.recd{border-color:var(--gold)}
 
 /* Recap */
@@ -902,7 +902,7 @@ function suggestAction(s){
   // the spare moment outranks the kill — recruiting is the table's way (Guided nudges it)
   if(spareTarget(s)){
     sug.action="spare";
-    sug.why="It's bleeding and watching you, knife lowered. The GM raises an eyebrow. “You could end this another way.”";
+    sug.why="It's bleeding and watching you, knife lowered. You could end this another way.";
     return sug;
   }
   const reach=heroReach(s);
@@ -1708,10 +1708,10 @@ function playEvents(ev,done){
         +(vsAlly?" your "+e.tgtName:"")+": "+foeMath(e.atk,vsAlly)+" \u2014 <b class='result-ok'>it misses.</b>")}
     else if(e.t==="allymove"){sndStep()}
     else if(e.t==="allyhit"){G.stats.rolls++;flashToken("tk-f"+e.fi);sndHit();
-      clogLine("Your "+e.name+(e.ranged?" flings a dagger at":" knifes at")+" the "+e.foe+": <b class='result-ok'>"
-        +e.dmg+" damage"+(e.atk.crit?" (CRIT!)":"")+"</b>"+(e.killed?" \u2014 <b class='result-ok'>it drops.</b>":""))}
+      clogLine("Your "+e.name+(e.ranged?" flings a dagger at":" knifes at")+" the "+e.foe+": "+allyMath(e.atk)
+        +" \u2014 <b class='result-ok'>"+e.dmg+" damage"+(e.atk.crit?" (CRIT!)":"")+"</b>"+(e.killed?" \u2014 <b class='result-ok'>it drops.</b>":""))}
     else if(e.t==="allymiss"){G.stats.rolls++;
-      clogLine("Your "+e.name+(e.ranged?"'s thrown dagger misses":" swings wide of")+" the "+e.foe+".")}
+      clogLine("Your "+e.name+(e.ranged?"'s thrown dagger at":" swings at")+" the "+e.foe+": "+allyMath(e.atk)+" \u2014 <b class='result-bad'>miss.</b>")}
     else if(e.t==="allydown"){removeToken("tk-a"+e.i);
       clogLine("<b class='result-bad'>Your "+e.name+" goes down</b> \u2014 out of this fight, but goblins are hard to kill. It'll be back after a rest.")}
     else if(e.t==="herodown"){
@@ -1738,6 +1738,11 @@ function foeMath(a,vsAlly){
   if(a.roll.mode!=="normal")s="d20\u00d72\u2192["+a.roll.rolls.join(",")+"] keep "+a.roll.value;
   return s+" +"+a.bonus+" = "+a.total+" vs "+(vsAlly?"its":"your")+" AC "+a.ac;
 }
+function allyMath(a){
+  let s="d20\u2192"+a.roll.value;
+  if(a.roll.mode!=="normal")s="d20\u00d72\u2192["+a.roll.rolls.join(",")+"] keep "+a.roll.value;
+  return s+" +"+a.bonus+" = "+a.total+" vs AC "+a.ac;
+}
 function endCombat(){
   if(!G.combat)return;
   const s=G.combat;const won=s.won;
@@ -1760,6 +1765,16 @@ function endCombat(){
     return;
   }
   if(s.heroDown&&won)G.stats.rescued=true;
+  // the recap also waits for a tap \u2014 let the last lines of the fight land (Casim, round 2)
+  if(!s.recapReady){
+    s.recapReady=true;
+    $("bonusrow").innerHTML="";$("actions").innerHTML="";$("sparerow").innerHTML="";
+    const b=document.createElement("button");
+    b.className="primary cont";b.style.gridColumn="1 / -1";b.textContent="Continue";
+    b.addEventListener("click",function(){endCombat()});
+    $("actions").appendChild(b);
+    return;
+  }
   $("recap-eyebrow").textContent=won?"Session end \u00b7 Victory":"Session end \u00b7 Defeat";
   $("recap-title").textContent=won?"The Lantern Road is open.":"Dragged back to the road.";
   $("recap-text").innerHTML=won
