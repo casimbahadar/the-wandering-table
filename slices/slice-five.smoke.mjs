@@ -59,7 +59,7 @@ async function playCombatOut(S,maxTurns){
     }
     if(doc.querySelector(".tile.hl.oa"))sawOaTile=true;
     if(sug.action==="spare"){
-      const sb=[...doc.querySelectorAll("#actions button")].find(b=>b.textContent.startsWith("Spare")&&!b.disabled);
+      const sb=[...doc.querySelectorAll("#sparerow button")].find(b=>b.textContent.startsWith("Spare")&&!b.disabled);
       if(sb){
         sawSpareBtn=true;
         click(sb);await sleep(120);await driveOverlay();

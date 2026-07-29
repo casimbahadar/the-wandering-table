@@ -238,6 +238,7 @@ h1,h2{font-family:var(--serif);font-weight:600}
       <div id="hpwrap"><div id="hpbar"><div id="hpfill"></div></div><div class="hpnum" id="hb-hp"></div></div>
       <span id="acbadge"></span>
     </div>
+    <div id="sparerow"></div>
     <div id="bonusrow"></div>
     <div id="actions"></div>
   </section>
@@ -1434,9 +1435,20 @@ let pendingAimed=false;
 function renderActionButtons(){
   const s=G.combat;if(!s)return;
   const ch=s.hero;
-  $("bonusrow").innerHTML="";$("actions").innerHTML="";
+  $("sparerow").innerHTML="";$("bonusrow").innerHTML="";$("actions").innerHTML="";
   if(s.over)return;
   const sug=suggestAction(s);
+  // the spare moment leads the whole action area — the table should see mercy before steel
+  // (Casim, playtest 2026-07-28: surface it above abilities and attacks)
+  const sp=spareTarget(s);
+  if(sp){
+    const spBtn=document.createElement("button");
+    spBtn.style.width="100%";
+    if(sug.action==="spare")spBtn.classList.add("recd");
+    spBtn.innerHTML="Spare the "+sp.name+'<span class="u">Persuasion DC '+sp.recruit.triggers[0].check.dc+" — it respects strength; roll with advantage</span>";
+    spBtn.addEventListener("click",function(){beginSpare()});
+    $("sparerow").appendChild(spBtn);
+  }
   // bonus row
   const BONUS_DICE={potion:"Roll 2d4+2",second_wind:"Roll 1d10+1",healing_word:"Roll 2d4+2"};
   function bb(label,which,dis){
@@ -1493,16 +1505,6 @@ function renderActionButtons(){
     if(!ev)return;
     playEvents(ev,function(){renderChrome();refreshSuggest()});
   },s.acted||!anyFoeAdjacent(s),sug.action==="disengage");
-  // the spare moment (battle_spare trigger) — your action, Persuasion, hand-rolled
-  const sp=spareTarget(s);
-  if(sp){
-    const spBtn=document.createElement("button");
-    spBtn.style.gridColumn="1 / -1";
-    if(sug.action==="spare")spBtn.classList.add("recd");
-    spBtn.innerHTML="Spare the "+sp.name+'<span class="u">Persuasion DC '+sp.recruit.triggers[0].check.dc+" — it respects strength; roll with advantage</span>";
-    spBtn.addEventListener("click",function(){beginSpare()});
-    $("actions").appendChild(spBtn);
-  }
   if(s.disengaged&&s.acted&&!s.moved){
     const stay=document.createElement("button");stay.className="ghost";stay.style.gridColumn="1 / -1";
     stay.textContent="Stay put \u2014 end turn";
@@ -1511,7 +1513,7 @@ function renderActionButtons(){
   }
 }
 function lockActions(on){
-  document.querySelectorAll("#actions button,#bonusrow button").forEach(function(b){b.disabled=on||b.disabled});
+  document.querySelectorAll("#actions button,#bonusrow button,#sparerow button").forEach(function(b){b.disabled=on||b.disabled});
 }
 function refreshSuggest(){
   const s=G.combat;
