@@ -168,6 +168,7 @@ h1,h2{font-family:var(--serif);font-weight:600}
 #actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:6px}
 #actions button{text-align:center;font-size:13.5px;padding:9px 6px}
 #actions button .u,#sparerow button .u{display:block;font-size:10.5px;color:var(--mut);font-weight:400}
+#sparerow button{text-align:center}
 #actions button.recd{border-color:var(--gold)}
 
 /* Recap */
@@ -481,8 +482,8 @@ const SCENES={
       "You drag the bodies off the road and claim the waystation fire for an hour. The lantern hisses above you.",
       "\u201cTake a breather,\u201d the GM says. \u201cRoll a Hit Die to patch up. But I wouldn't get comfortable.\u201d"]},
     warband_r:{combat:true,opener:"warband",stage2:true,dm:[
-      "Your goblin's ears go flat. From the treeline: three shapes \u2014 a big one with a short bow, and two more with knives out. The toll-takers came to collect their own.",
-      "The GM sets three red tokens down. \u201cIt hisses something at them. They are not here to talk.\u201d"]},
+      "Your goblin's ears go flat. From the treeline: two shapes \u2014 a big one with a short bow, and a knife-hand slinking at its heel. The toll-takers came to collect their own.",
+      "The GM sets two red tokens down. \u201cIt hisses something at them. They are not here to talk.\u201d"]},
     warband_s:{combat:true,opener:"reprisal",stage2:true,dm:[
       "Before the hour is out, a lone shape steps onto the road: bigger than the others, short bow low, unhurried. The one the toll-takers answered to.",
       "The GM sets a single red token down and looks at you over the screen. \u201cIt counted the bodies. It knows it's just you.\u201d"]}
@@ -1398,7 +1399,7 @@ const OPENER_TEXT={
   shaken:"Your voice still rings in their ears \u2014 their first swings will be <b class='result-ok'>wild and wide</b>, and you move first.",
   normal:"Steel out, eyes up. Even footing.",
   ambushed:"They circled while you blundered. <b class='result-bad'>They act first \u2014 and their opening attacks have advantage.</b>",
-  warband:"Three of them \u2014 and one of you is a goblin now. <b class='result-ok'>You move first.</b> Tap your ally's chip to change its orders.",
+  warband:"Two of them \u2014 and one of you is a goblin now. <b class='result-ok'>You move first.</b> Tap your ally's chip to change its orders.",
   reprisal:"Just the big one, taking its time. Even footing \u2014 and nowhere to hide."
 };
 let targeting=false;
