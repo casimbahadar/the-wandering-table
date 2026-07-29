@@ -1008,6 +1008,256 @@ function suggestAction(s){
   }
   return sug;
 }
+/* ===================== SPIKE: archetype brains over declarative ability data =====================
+   CANDIDATE architecture under test (DECISIONS 2026-07-29). The control suggestAction above is
+   UNTOUCHED — both live in this file so they run against the identical shipped rules engine.
+
+   ABILITY SCHEMA v0
+   -----------------
+   {
+     id      : string   — maps to the engine's action token
+     name    : string   — player-facing
+     kind    : "attack" | "autohit" | "heal" | "guard" | "withdraw" | "spare"
+     cost    : "action" | "bonus"
+     uses    : null (at-will) | number | "item"
+     range   : tiles (1 = melee); needsLoS: bool
+     target  : "enemy" | "self"
+     toHit   : "weapon" | "spell" | "none"        — "none" ⇒ ignores AC and the adjacency penalty
+     dice    : {n, die, mod:"str"|"dex"|"int"|"wis"|null, flat, perDart}
+     rider   : {advantage:bool, bonusDice:{n,die}} | null
+     gate    : {hpBelow:f} | null                 — CANDIDATE B ONLY (declarative tuning)
+   }
+   The brains reason over these fields. Nothing below reads a class name to decide what to do;
+   the only per-class datum is which archetype the kit declares.
+*/
+const KIT_DATA={
+  fighter:{archetype:"melee_striker",abilities:[
+    {id:"strike",name:"Longsword",kind:"attack",cost:"action",uses:null,range:1,needsLoS:true,target:"enemy",toHit:"weapon",dice:{n:1,die:8,mod:"str"}},
+    {id:"second_wind",name:"Second Wind",kind:"heal",cost:"bonus",uses:2,target:"self",dice:{n:1,die:10,flat:1},gate:{hpBelow:0.45}}
+  ]},
+  rogue:{archetype:"melee_striker",abilities:[
+    {id:"strike",name:"Shortsword",kind:"attack",cost:"action",uses:null,range:1,needsLoS:true,target:"enemy",toHit:"weapon",dice:{n:1,die:6,mod:"dex"}},
+    {id:"aimed_strike",name:"Aimed Strike",kind:"attack",cost:"action",uses:2,range:1,needsLoS:true,target:"enemy",toHit:"weapon",
+      dice:{n:1,die:6,mod:"dex"},rider:{advantage:true,bonusDice:{n:1,die:6}}}
+  ]},
+  wizard:{archetype:"ranged_striker",abilities:[
+    {id:"strike",name:"Fire Bolt",kind:"attack",cost:"action",uses:null,range:99,needsLoS:true,target:"enemy",toHit:"spell",dice:{n:1,die:10,mod:null}},
+    {id:"magic_missile",name:"Magic Missile",kind:"autohit",cost:"action",uses:1,range:99,needsLoS:true,target:"enemy",toHit:"none",
+      dice:{n:3,die:4,flat:1,perDart:true}}
+  ]},
+  cleric:{archetype:"healer_support",abilities:[
+    {id:"strike",name:"Mace",kind:"attack",cost:"action",uses:null,range:1,needsLoS:true,target:"enemy",toHit:"weapon",dice:{n:1,die:6,mod:"str"}},
+    {id:"healing_word",name:"Healing Word",kind:"heal",cost:"bonus",uses:2,target:"self",dice:{n:2,die:4,flat:2},gate:{hpBelow:0.6}}
+  ]}
+};
+// available to every kit regardless of class
+const UNIVERSAL_ABILITIES=[
+  {id:"potion",name:"Healing potion",kind:"heal",cost:"bonus",uses:"item",target:"self",dice:{n:2,die:4,flat:2},gate:{hpBelow:0.5}},
+  {id:"guard",name:"Defend",kind:"guard",cost:"action"},
+  {id:"withdraw",name:"Disengage",kind:"withdraw",cost:"action"},
+  {id:"spare",name:"Spare",kind:"spare",cost:"action"}
+];
+// Candidate A uses this single constant for every archetype — no per-class knowledge anywhere.
+const ARCHETYPE_HEAL_GATE=0.5;
+
+function kitOf(ch){return KIT_DATA[ch.clsId]}
+function abilitiesOf(ch){return kitOf(ch).abilities.concat(UNIVERSAL_ABILITIES)}
+function usesLeft(ch,ab){
+  if(ab.uses===null||ab.uses===undefined)return Infinity;
+  if(ab.id==="potion")return ch.potion?1:0;
+  if(ch.action2&&ch.action2.id===ab.id)return ch.action2Uses;
+  if(ch.bonus&&ch.bonus.id===ab.id)return ch.bonusUses;
+  return 0;
+}
+function avgDice(ch,ab){
+  const d=ab.dice;if(!d)return 0;
+  let v=d.n*(d.die+1)/2+(d.flat||0)*(d.perDart?d.n:1);
+  if(d.mod)v+=mod(ch.stats[d.mod]);
+  if(ab.rider&&ab.rider.bonusDice)v+=ab.rider.bonusDice.n*(ab.rider.bonusDice.die+1)/2;
+  return v;
+}
+// hit chance from the data alone: attack bonus derived from toHit + the same adv/dis rules the engine uses
+function pHit(s,ch,ab,foe){
+  if(ab.toHit==="none")return 1;
+  const bonus=mod(ch.stats[ab.dice.mod||(ab.toHit==="spell"?"int":"str")])+ch.prof;
+  const cover=(ab.range>1)?creatureCover(s,s.pos.hero.x,s.pos.hero.y,foe.x,foe.y):0;
+  const need=Math.max(2,Math.min(20,foe.ac+cover-bonus));
+  let p=(21-need)/20;
+  const dis=ab.range>1&&anyFoeAdjacent(s);
+  const adv=(ab.rider&&ab.rider.advantage)||s.firstAttackAdv;
+  if(adv&&!dis)p=1-(1-p)*(1-p);
+  else if(dis&&!adv)p=p*p;
+  return p;
+}
+function evOf(s,ch,ab,foe){return pHit(s,ch,ab,foe)*avgDice(ch,ab)}
+// pick the best offensive ability usable against `foe` FROM a given tile (defaults to current)
+function bestOffense(s,ch,foe,from){
+  const h=from||s.pos.hero;
+  let best=null,bestEv=-1;
+  abilitiesOf(ch).forEach(function(ab){
+    if(ab.kind!=="attack"&&ab.kind!=="autohit")return;
+    if(usesLeft(ch,ab)<=0)return;
+    if(ab.range<=1&&cheb(h,foe)>1)return;
+    if(ab.range>1&&ab.needsLoS&&!los(h.x,h.y,foe.x,foe.y))return;
+    let ev=evOf(s,ch,ab,foe);
+    // finite-use abilities are worth spending when they finish a target or the fight is hot
+    if(usesLeft(ch,ab)!==Infinity&&avgDice(ch,ab)<foe.hp&&livingFoes(s).length>1)ev*=0.85;
+    if(ev>bestEv){bestEv=ev;best=ab}
+  });
+  return best?{ab:best,ev:bestEv}:null;
+}
+// How dangerous is this foe to the hero right now? Derived from the foe's own statblock data —
+// a ranged attacker threatens every round; a melee one only once it closes. Generic: no class knowledge.
+function foeThreat(s,f){
+  const h=s.pos.hero;
+  const dmg=(f.dmgDie+1)/2+f.dmgMod;
+  const need=Math.max(2,Math.min(20,s.hero.ac-f.atk));
+  const pHitYou=(21-need)/20;
+  if((f.rngN||1)>1)return dmg*pHitYou*(los(f.x,f.y,h.x,h.y)?1:0.6);
+  const turnsToReach=Math.max(0,cheb(h,f)-1)/6;      // speed 6 tiles
+  return dmg*pHitYou/(1+turnsToReach);
+}
+function healChoice(s,ch,useGates){
+  if(s.bonusUsed)return null;
+  const frac=ch.hp/ch.maxHp;
+  let pick=null,pickHeal=-1;
+  abilitiesOf(ch).forEach(function(ab){
+    if(ab.kind!=="heal"||usesLeft(ch,ab)<=0)return;
+    const gate=useGates&&ab.gate?ab.gate.hpBelow:ARCHETYPE_HEAL_GATE;
+    if(frac>gate)return;
+    const h=avgDice(ch,ab);
+    if(h>pickHeal){pickHeal=h;pick=ab}
+  });
+  return pick;
+}
+function actionToken(ab){
+  if(ab.kind==="guard")return"defend";
+  if(ab.kind==="withdraw")return"disengage";
+  if(ab.kind==="spare")return"spare";
+  return ab.id==="strike"?"attack":"ability";
+}
+/* ---- archetype brains ---- */
+function brainMeleeStriker(s,ch,sug,useGates){
+  const h=s.pos.hero,foes=livingFoes(s);
+  const adjacent=foes.filter(function(f){return cheb(h,f)<=1});
+  if(adjacent.length){
+    const tgt=adjacent.slice().sort(function(a,b){return a.hp-b.hp})[0];
+    const pick=bestOffense(s,ch,tgt);
+    if(pick){
+      sug.action=actionToken(pick.ab);sug.target=s.foes.indexOf(tgt);
+      sug.why=(pick.ab.rider&&pick.ab.rider.advantage)
+        ? "Take the opening — "+pick.ab.name+" swings with advantage, about "+pick.ev.toFixed(1)+" damage on average."
+        : "It's in your face. "+pick.ab.name+" is your best swing from here — about "+pick.ev.toFixed(1)+" damage on average.";
+      return sug;
+    }
+  }
+  // close on the nearest; among equally-distant foes go for the most dangerous (threat from data)
+  const tgt=foes.slice().sort(function(a,b){
+    const da=cheb(h,a),db=cheb(h,b);if(da!==db)return da-db;
+    const ta=foeThreat(s,a),tb=foeThreat(s,b);if(tb!==ta)return tb-ta;
+    return a.hp-b.hp})[0];
+  const field=bfsField(tgt.x,tgt.y);
+  const reach=heroReach(s);
+  let best=null,bestD=field.get(key(h.x,h.y));if(bestD===undefined)bestD=999;
+  reach.forEach(function(_,k){const fd=field.get(k);if(fd===undefined)return;
+    if(fd<bestD){bestD=fd;const p=k.split(",");best={x:+p[0],y:+p[1]}}});
+  if(best)sug.move=best;
+  const after=sug.move||h;
+  if(cheb(after,tgt)<=1){
+    // evaluate abilities FROM the tile we will actually be standing on
+    const pick=bestOffense(s,ch,tgt,after)||{ab:abilitiesOf(ch)[0],ev:0};
+    sug.action=actionToken(pick.ab);sug.target=s.foes.indexOf(tgt);
+    sug.why=(pick.ab.rider&&pick.ab.rider.advantage)
+      ? "Close the gap and take the opening — "+pick.ab.name+" strikes with advantage."
+      : "Close the gap and swing before it can slip away.";
+  }else{
+    sug.action="defend";sug.target=s.foes.indexOf(tgt);
+    sug.why="You can't reach them this turn. Advance behind your guard — let their shots find nothing.";
+  }
+  return sug;
+}
+function brainRangedStriker(s,ch,sug,useGates){
+  const h=s.pos.hero,foes=livingFoes(s);
+  const reach=heroReach(s);
+  const adjacent=foes.filter(function(f){return cheb(h,f)<=1});
+  if(adjacent.length){
+    // an ability that ignores AC also ignores the blade in your face — that follows from toHit:"none"
+    const autos=abilitiesOf(ch).filter(function(ab){
+      return ab.kind==="autohit"&&usesLeft(ch,ab)>0&&
+        foes.some(function(f){return !ab.needsLoS||los(h.x,h.y,f.x,f.y)})});
+    if(autos.length){
+      const ab=autos[0];
+      sug.action=actionToken(ab);
+      sug.why="Point-blank "+ab.name+" — it never misses, so a blade in your face doesn't bother it.";
+      return sug;
+    }
+    sug.action="disengage";
+    let best=null,bestScore=-999;
+    reach.forEach(function(_,k){
+      const p=k.split(","),x=+p[0],y=+p[1];
+      if(!foes.some(function(f){return los(x,y,f.x,f.y)}))return;
+      const minD=Math.min.apply(null,foes.map(function(f){return Math.max(Math.abs(x-f.x),Math.abs(y-f.y))}));
+      if(minD*10>bestScore){bestScore=minD*10;best={x:x,y:y}}
+    });
+    sug.move=best;
+    sug.why="Disengage — slip away without a parting blow, and make them cross the open again.";
+    return sug;
+  }
+  // hold range with line of sight
+  let best=null,bestScore=-999;
+  reach.forEach(function(_,k){
+    const p=k.split(","),x=+p[0],y=+p[1];
+    if(!foes.filter(function(f){return los(x,y,f.x,f.y)}).length)return;
+    const minD=Math.min.apply(null,foes.map(function(f){return Math.max(Math.abs(x-f.x),Math.abs(y-f.y))}));
+    const score=Math.min(minD,4)*10+(x===h.x&&y===h.y?1:0);
+    if(score>bestScore){bestScore=score;best={x:x,y:y}}
+  });
+  if(best&&!(best.x===h.x&&best.y===h.y))sug.move=best;
+  const from=sug.move||h;
+  const visible=foes.filter(function(f){return los(from.x,from.y,f.x,f.y)});
+  if(!visible.length){sug.action="defend";sug.why="No clear shot from anywhere you can reach — guard up.";return sug}
+  visible.sort(function(a,b){return a.hp-b.hp});
+  const tgt=visible[0];
+  let pick=null,pickEv=-1;
+  abilitiesOf(ch).forEach(function(ab){
+    if(ab.kind!=="attack"&&ab.kind!=="autohit")return;
+    if(usesLeft(ch,ab)<=0)return;
+    if(ab.range<=1)return;
+    let ev=pHit(s,ch,ab,tgt)*avgDice(ch,ab);
+    // spend a limited resource when it finishes something or when several targets are up
+    if(usesLeft(ch,ab)!==Infinity&&!(avgDice(ch,ab)>=tgt.hp||visible.length>=2))ev*=0.6;
+    if(ev>pickEv){pickEv=ev;pick=ab}
+  });
+  if(!pick){sug.action="defend";sug.why="Nothing worth spending from here — guard up.";return sug}
+  sug.action=actionToken(pick);sug.target=s.foes.indexOf(tgt);
+  sug.why=pick.toHit==="none"
+    ? pick.name+" — three darts, no roll to miss. Certain damage while you hold distance."
+    : "Keep your range and make them cross open ground — "+pick.name+" averages about "+pickEv.toFixed(1)+" from here.";
+  return sug;
+}
+const ARCHETYPES={melee_striker:brainMeleeStriker,ranged_striker:brainRangedStriker,healer_support:brainMeleeStriker};
+// CANDIDATE brain. useGates=false ⇒ Candidate A (pure archetype, one constant, no per-class numbers).
+// useGates=true  ⇒ Candidate B (same brains; thresholds carried declaratively in ability data).
+function suggestActionData(s,useGates){
+  const ch=s.hero,foes=livingFoes(s);
+  const sug={move:null,bonus:null,action:"defend",target:0,why:""};
+  if(!foes.length)return sug;
+  if(spareTarget(s)){
+    sug.action="spare";
+    sug.why="It's bleeding and watching you, knife lowered. You could end this another way.";
+    return sug;
+  }
+  const heal=healChoice(s,ch,useGates);
+  if(heal){
+    sug.bonus=heal.id;
+    sug.why=heal.name+" first — you're at "+Math.round(ch.hp/ch.maxHp*100)+"%. ";
+  }
+  const brain=ARCHETYPES[kitOf(ch).archetype];
+  const out=brain(s,ch,sug,useGates);
+  if(heal)out.why=heal.name+" first — you're at "+Math.round(ch.hp/ch.maxHp*100)+"%. Then: "+out.why;
+  return out;
+}
+/* =================== END SPIKE =================== */
 /* CORE-END */
 
 /* =========================================================================
